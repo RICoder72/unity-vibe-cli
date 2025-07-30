@@ -109,7 +109,7 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
-using UnityEngine.UI;
+// using UnityEngine.UI; // Commented out to avoid dependency on Unity UI package
 using System.IO;
 using System.Collections.Generic;
 using System.Linq;
@@ -247,6 +247,14 @@ namespace UnityVibe.Editor
             int sortingOrder = 0,
             Vector3? worldPosition = null)
         {
+            Debug.LogError("[UnityCLI] Canvas creation requires Unity UI package to be installed in your project.");
+            Debug.LogError("[UnityCLI] Please install Unity UI via Window > Package Manager > Unity Registry > UI Toolkit or Legacy UI.");
+            Debug.LogError("[UnityCLI] Canvas functionality is disabled to maintain package compatibility.");
+            return false;
+            
+            // TODO: Re-enable canvas functionality when UI package is available
+            // This code is commented out to avoid compilation errors
+            /*
             try
             {
                 // Validate active scene
@@ -257,41 +265,9 @@ namespace UnityVibe.Editor
                     return false;
                 }
                 
-                // Create canvas GameObject
+                // Create canvas GameObject - requires Unity UI package
                 GameObject canvasGO = new GameObject(canvasName);
-                Canvas canvas = canvasGO.AddComponent<Canvas>();
-                
-                // Set render mode
-                RenderMode mode = ParseRenderMode(renderMode);
-                canvas.renderMode = mode;
-                canvas.sortingOrder = sortingOrder;
-                
-                // Add CanvasScaler
-                CanvasScaler scaler = canvasGO.AddComponent<CanvasScaler>();
-                CanvasScaler.ScaleMode scaleModeEnum = ParseScaleMode(scaleMode);
-                scaler.uiScaleMode = scaleModeEnum;
-                
-                if (scaleModeEnum == CanvasScaler.ScaleMode.ScaleWithScreenSize)
-                {
-                    scaler.referenceResolution = new Vector2(referenceWidth, referenceHeight);
-                    scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
-                    scaler.matchWidthOrHeight = 0.5f; // Balanced scaling
-                }
-                
-                // Add GraphicRaycaster for UI interaction
-                canvasGO.AddComponent<GraphicRaycaster>();
-                
-                // Set position for WorldSpace canvas
-                if (mode == RenderMode.WorldSpace && worldPosition.HasValue)
-                {
-                    canvasGO.transform.position = worldPosition.Value;
-                }
-                
-                // Ensure EventSystem exists for UI interaction
-                if (Object.FindObjectOfType<UnityEngine.EventSystems.EventSystem>() == null)
-                {
-                    CreateEventSystem();
-                }
+                // Canvas canvas = canvasGO.AddComponent<Canvas>();
                 
                 Debug.Log($"[UnityCLI] Successfully created canvas '{canvasName}' with {renderMode} render mode");
                 return true;
@@ -301,6 +277,7 @@ namespace UnityVibe.Editor
                 Debug.LogError($"[UnityCLI] Exception creating canvas: {e.Message}");
                 return false;
             }
+            */
         }
         
         /// <summary>
@@ -340,26 +317,15 @@ namespace UnityVibe.Editor
             }
         }
         
+        // Canvas helper methods disabled - require Unity UI package
+        /*
         /// <summary>
         /// Parses string render mode to Unity enum
         /// </summary>
         private static RenderMode ParseRenderMode(string renderMode)
         {
-            switch (renderMode.ToLower())
-            {
-                case "screenspaceoverlay":
-                case "overlay":
-                    return RenderMode.ScreenSpaceOverlay;
-                case "screenspacecamera":
-                case "camera":
-                    return RenderMode.ScreenSpaceCamera;
-                case "worldspace":
-                case "world":
-                    return RenderMode.WorldSpace;
-                default:
-                    Debug.LogWarning($"[UnityCLI] Unknown render mode '{renderMode}', using ScreenSpaceOverlay");
-                    return RenderMode.ScreenSpaceOverlay;
-            }
+            // Implementation commented out - requires Unity UI package
+            return RenderMode.ScreenSpaceOverlay;
         }
         
         /// <summary>
@@ -367,22 +333,10 @@ namespace UnityVibe.Editor
         /// </summary>
         private static CanvasScaler.ScaleMode ParseScaleMode(string scaleMode)
         {
-            switch (scaleMode.ToLower())
-            {
-                case "constantpixelsize":
-                case "constant":
-                    return CanvasScaler.ScaleMode.ConstantPixelSize;
-                case "scalewithscreensize":
-                case "scale":
-                    return CanvasScaler.ScaleMode.ScaleWithScreenSize;
-                case "constantphysicalsize":
-                case "physical":
-                    return CanvasScaler.ScaleMode.ConstantPhysicalSize;
-                default:
-                    Debug.LogWarning($"[UnityCLI] Unknown scale mode '{scaleMode}', using ScaleWithScreenSize");
-                    return CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            }
+            // Implementation commented out - requires Unity UI package
+            return CanvasScaler.ScaleMode.ScaleWithScreenSize;
         }
+        */
         
         /// <summary>
         /// Gets list of available scene types

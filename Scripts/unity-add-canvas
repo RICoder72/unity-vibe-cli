@@ -1,0 +1,74 @@
+#!/bin/bash
+
+# Unity Vibe CLI - Canvas Creation Script
+# Adds a canvas to the currently active Unity scene
+# Usage: unity-add-canvas <canvas_name> <render_mode> [width] [height] [scale_mode]
+
+# Check if Unity executable exists
+UNITY_PATH=""
+if command -v /mnt/c/Program\ Files/Unity/Hub/Editor/*/Editor/Unity.exe >/dev/null 2>&1; then
+    UNITY_PATH=$(find /mnt/c/Program\ Files/Unity/Hub/Editor/*/Editor/Unity.exe | head -1)
+elif command -v unity >/dev/null 2>&1; then
+    UNITY_PATH="unity"
+else
+    echo "Error: Unity Editor not found. Please ensure Unity is installed and accessible."
+    exit 1
+fi
+
+# Check arguments
+if [ $# -lt 2 ]; then
+    echo "Usage: unity-add-canvas <canvas_name> <render_mode> [width] [height] [scale_mode]"
+    echo ""
+    echo "Arguments:"
+    echo "  canvas_name  - Name for the canvas GameObject"
+    echo "  render_mode  - Canvas render mode (ScreenSpaceOverlay, ScreenSpaceCamera, WorldSpace)"
+    echo "  width        - (Optional) Reference resolution width (default: 1920)"
+    echo "  height       - (Optional) Reference resolution height (default: 1080)"
+    echo "  scale_mode   - (Optional) UI scale mode (ConstantPixelSize, ScaleWithScreenSize, ConstantPhysicalSize)"
+    echo ""
+    echo "Examples:"
+    echo "  unity-add-canvas MainCanvas ScreenSpaceOverlay"
+    echo "  unity-add-canvas UICanvas ScreenSpaceOverlay 1920 1080 ScaleWithScreenSize"
+    echo "  unity-add-canvas WorldCanvas WorldSpace 100 100"
+    exit 1
+fi
+
+CANVAS_NAME="$1"
+RENDER_MODE="$2"
+WIDTH="${3:-1920}"
+HEIGHT="${4:-1080}"
+SCALE_MODE="${5:-ScaleWithScreenSize}"
+
+# Get current directory (assuming it's the Unity project root)
+PROJECT_PATH=$(pwd)
+
+echo "Unity Vibe CLI - Adding Canvas"
+echo "=============================="
+echo "Canvas Name: $CANVAS_NAME"
+echo "Render Mode: $RENDER_MODE"
+echo "Resolution: ${WIDTH}x${HEIGHT}"
+echo "Scale Mode: $SCALE_MODE"
+echo "Project Path: $PROJECT_PATH"
+echo ""
+
+# Execute Unity command
+"$UNITY_PATH" \
+    -batchmode \
+    -quit \
+    -projectPath "$PROJECT_PATH" \
+    -executeMethod UnityVibe.Editor.CLI.AddCanvasFromCommandLine \
+    "$CANVAS_NAME" \
+    "$RENDER_MODE" \
+    "$WIDTH" \
+    "$HEIGHT" \
+    "$SCALE_MODE"
+
+# Check exit code
+if [ $? -eq 0 ]; then
+    echo ""
+    echo "✅ Canvas added successfully: $CANVAS_NAME"
+else
+    echo ""
+    echo "❌ Failed to add canvas. Check Unity console for details."
+    exit 1
+fi

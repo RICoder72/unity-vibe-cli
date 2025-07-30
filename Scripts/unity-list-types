@@ -1,0 +1,41 @@
+#!/bin/bash
+
+# Unity Vibe CLI - List Scene Types Script
+# Lists all available scene types for the current Unity installation
+# Usage: unity-list-types
+
+# Check if Unity executable exists
+UNITY_PATH=""
+if command -v /mnt/c/Program\ Files/Unity/Hub/Editor/*/Editor/Unity.exe >/dev/null 2>&1; then
+    UNITY_PATH=$(find /mnt/c/Program\ Files/Unity/Hub/Editor/*/Editor/Unity.exe | head -1)
+elif command -v unity >/dev/null 2>&1; then
+    UNITY_PATH="unity"
+else
+    echo "Error: Unity Editor not found. Please ensure Unity is installed and accessible."
+    exit 1
+fi
+
+# Get current directory (assuming it's the Unity project root)
+PROJECT_PATH=$(pwd)
+
+echo "Unity Vibe CLI - Available Scene Types"
+echo "======================================"
+echo "Project Path: $PROJECT_PATH"
+echo ""
+
+# Execute Unity command
+"$UNITY_PATH" \
+    -batchmode \
+    -quit \
+    -projectPath "$PROJECT_PATH" \
+    -executeMethod UnityVibe.Editor.CLI.ListSceneTypesFromCommandLine
+
+# Check exit code
+if [ $? -eq 0 ]; then
+    echo ""
+    echo "✅ Scene types listed successfully"
+else
+    echo ""
+    echo "❌ Failed to list scene types. Check Unity console for details."
+    exit 1
+fi

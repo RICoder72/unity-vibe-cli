@@ -36,6 +36,37 @@ A powerful Command Line Interface tool for Unity development workflow automation
 1. Download the latest `.unitypackage` from [Releases](https://github.com/unity-vibe/unity-vibe-cli/releases)
 2. Import into your Unity project via `Assets > Import Package > Custom Package`
 
+## 🐧 WSL Setup (Windows Users)
+
+After installing the Unity package, set up the CLI for WSL:
+
+### One-Time Setup Per Project
+```bash
+# Navigate to your Unity project root
+cd /mnt/c/path/to/your/unity-project
+
+# Run the installation script (creates the Scripts directory if needed)
+./Scripts/install-vibe-unity
+
+# Restart your terminal or reload shell configuration
+source ~/.bashrc
+```
+
+### Verify Installation
+```bash
+# Test the CLI is working
+vibe-unity --version
+vibe-unity --help
+
+# Test Unity detection
+vibe-unity list-types
+```
+
+**Requirements:**
+- Unity Hub installed in standard Windows location
+- WSL with bash or zsh shell
+- Unity project with Unity Vibe CLI package installed
+
 ## 🛠️ Quick Start
 
 ### Basic Usage (C# API)
@@ -55,30 +86,38 @@ CLI.ListSceneTypes();
 
 ### Command Line Usage
 
-#### Windows/WSL
+#### Unified CLI Interface (Recommended)
 ```bash
-# Add Scripts directory to your PATH or run from project root
+# Install CLI for WSL (run once per project)
+./Scripts/install-vibe-unity
 
 # Create a new scene
-./Scripts/unity-create-scene MyScene Assets/Scenes DefaultGameObjects true
+vibe-unity create-scene MyScene Assets/Scenes
+vibe-unity create-scene GameScene Assets/Scenes/Game --type 3D --build
 
 # Add a canvas
-./Scripts/unity-add-canvas MainCanvas ScreenSpaceOverlay 1920 1080
+vibe-unity add-canvas MainCanvas --mode ScreenSpaceOverlay --width 1920 --height 1080
 
 # List available scene types
-./Scripts/unity-list-types
+vibe-unity list-types
 
 # Show help
-./Scripts/unity-cli-help
+vibe-unity --help
+vibe-unity help create-scene
 ```
 
-#### Direct Unity Command Line
+#### Direct Script Usage
 ```bash
-# Create scene
-Unity -batchmode -quit -projectPath "path/to/project" -executeMethod UnityVibe.Editor.CLI.CreateSceneFromCommandLine MyScene Assets/Scenes DefaultGameObjects true
+# Run from project root without installation
+./Scripts/vibe-unity create-scene MyScene Assets/Scenes
+./Scripts/vibe-unity list-types
+./Scripts/vibe-unity --help
+```
 
-# Add canvas
-Unity -batchmode -quit -projectPath "path/to/project" -executeMethod UnityVibe.Editor.CLI.AddCanvasFromCommandLine MainCanvas ScreenSpaceOverlay 1920 1080
+#### Legacy Unity Command Line
+```bash
+# Direct Unity batch mode (not recommended)
+Unity -batchmode -quit -projectPath "path/to/project" -executeMethod UnityVibe.Editor.CLI.CreateSceneFromCommandLine MyScene Assets/Scenes DefaultGameObjects true
 ```
 
 ## 📚 Documentation
@@ -131,43 +170,57 @@ CLI.AddCanvas("WorldUI", "WorldSpace", 100, 100);
 
 ### CLI Commands
 
-#### unity-create-scene
+#### vibe-unity create-scene
 ```bash
-unity-create-scene <scene_name> <scene_path> [scene_type] [add_to_build]
+vibe-unity create-scene <SCENE_NAME> <SCENE_PATH> [OPTIONS]
 ```
+
+**Options:**
+- `-t, --type <TYPE>` - Scene type (default: DefaultGameObjects)
+- `-b, --build` - Add scene to build settings
+- `-h, --help` - Show help for this command
 
 **Examples:**
 ```bash
-unity-create-scene MyScene Assets/Scenes
-unity-create-scene GameScene Assets/Scenes/Game DefaultGameObjects true
-unity-create-scene UIScene Assets/Scenes/UI 2D false
+vibe-unity create-scene MyScene Assets/Scenes
+vibe-unity create-scene GameScene Assets/Scenes/Game --type 3D --build
+vibe-unity create-scene UIScene Assets/Scenes/UI -t 2D
 ```
 
-#### unity-add-canvas
+#### vibe-unity add-canvas
 ```bash
-unity-add-canvas <canvas_name> <render_mode> [width] [height] [scale_mode]
+vibe-unity add-canvas <CANVAS_NAME> [OPTIONS]
 ```
+
+**Options:**
+- `-m, --mode <MODE>` - Render mode (default: ScreenSpaceOverlay)
+- `-w, --width <WIDTH>` - Reference width (default: 1920)
+- `--height <HEIGHT>` - Reference height (default: 1080)
+- `-s, --scale <SCALE>` - Scale mode (default: ScaleWithScreenSize)
+- `-h, --help` - Show help for this command
 
 **Examples:**
 ```bash
-unity-add-canvas MainCanvas ScreenSpaceOverlay
-unity-add-canvas UICanvas ScreenSpaceOverlay 1920 1080 ScaleWithScreenSize
-unity-add-canvas WorldCanvas WorldSpace 100 100
+vibe-unity add-canvas MainCanvas
+vibe-unity add-canvas UICanvas --mode ScreenSpaceOverlay --width 1920 --height 1080
+vibe-unity add-canvas WorldCanvas -m WorldSpace
 ```
 
-#### unity-list-types
+#### vibe-unity list-types
 ```bash
-unity-list-types
+vibe-unity list-types
 ```
 
 Lists all available scene types for your Unity installation.
 
-#### unity-cli-help
+#### vibe-unity help
 ```bash
-unity-cli-help
+vibe-unity --help                    # General help
+vibe-unity help <COMMAND>            # Command-specific help
+vibe-unity <COMMAND> --help          # Alternative command help
 ```
 
-Shows detailed help information for all available commands.
+Shows detailed help information for commands.
 
 ## 🔧 Advanced Usage
 
@@ -205,13 +258,13 @@ CLI.AddCanvas("PopupCanvas", "ScreenSpaceOverlay", 1920, 1080, "ScaleWithScreenS
 echo "Setting up Unity project structure..."
 
 # Create scene directories
-unity-create-scene MainMenu Assets/Scenes/Menus DefaultGameObjects true
-unity-create-scene Level1 Assets/Scenes/Levels DefaultGameObjects true
-unity-create-scene Settings Assets/Scenes/UI 2D true
+vibe-unity create-scene MainMenu Assets/Scenes/Menus --type DefaultGameObjects --build
+vibe-unity create-scene Level1 Assets/Scenes/Levels --type DefaultGameObjects --build
+vibe-unity create-scene Settings Assets/Scenes/UI --type 2D --build
 
 # Add UI canvases
-unity-add-canvas MainMenuCanvas ScreenSpaceOverlay 1920 1080
-unity-add-canvas SettingsCanvas ScreenSpaceOverlay 1920 1080
+vibe-unity add-canvas MainMenuCanvas --mode ScreenSpaceOverlay --width 1920 --height 1080
+vibe-unity add-canvas SettingsCanvas --mode ScreenSpaceOverlay --width 1920 --height 1080
 
 echo "Project setup complete!"
 ```
@@ -235,33 +288,37 @@ Access Unity Vibe CLI features directly from Unity's menu:
 
 **Current Working CLI Commands:**
 ```bash
+# Install CLI (run once per project)
+./Scripts/install-vibe-unity
+
 # Create a new scene (Unity Editor must be closed)
-./Scripts/unity-create-scene MyScene Assets/Scenes/Test DefaultGameObjects false
+vibe-unity create-scene MyScene Assets/Scenes/Test --type DefaultGameObjects
 
 # List available scene types  
-./Scripts/unity-list-types
+vibe-unity list-types
 
 # Show help documentation
-./Scripts/unity-cli-help
+vibe-unity --help
+vibe-unity help create-scene
 
 # Add canvas (requires Unity UI package - currently disabled)
-./Scripts/unity-add-canvas MainCanvas ScreenSpaceOverlay 1920 1080
+vibe-unity add-canvas MainCanvas --mode ScreenSpaceOverlay --width 1920 --height 1080
 ```
 
 **Expected Output:**
 ```bash
-$ ./Scripts/unity-create-scene MyNewScene Assets/Scenes/Test DefaultGameObjects false
+$ vibe-unity create-scene MyNewScene Assets/Scenes/Test --type 3D --build
 Unity Vibe CLI - Creating Scene
 ================================
 Scene Name: MyNewScene
 Scene Path: Assets/Scenes/Test  
-Scene Type: DefaultGameObjects
-Add to Build: false
+Scene Type: 3D
+Add to Build: true
 Project Path: C:/repos/unity-vibe-cli
 
 ✅ Scene created successfully: Assets/Scenes/Test/MyNewScene.unity
 
-$ ./Scripts/unity-list-types
+$ vibe-unity list-types
 Unity Vibe CLI - Available Scene Types
 ======================================
 Project Path: C:/repos/unity-vibe-cli

@@ -1,0 +1,449 @@
+#!/bin/bash
+
+# Unity Vibe CLI - Unified Command Interface
+# Usage: vibe-unity <command> [options]
+# 
+# Commands:
+#   create-scene    Create a new Unity scene
+#   list-types      List available scene types  
+#   add-canvas      Add canvas to current scene
+#   help            Show detailed help
+#
+# Global Options:
+#   --help, -h      Show help for command
+#   --version, -v   Show version information
+
+VERSION="1.0.0"
+
+# Check if Unity executable exists
+UNITY_PATH=""
+if command -v /mnt/c/Program\ Files/Unity/Hub/Editor/*/Editor/Unity.exe >/dev/null 2>&1; then
+    UNITY_PATH=$(find /mnt/c/Program\ Files/Unity/Hub/Editor/*/Editor/Unity.exe | head -1)
+elif command -v unity >/dev/null 2>&1; then
+    UNITY_PATH="unity"
+else
+    echo "Error: Unity Editor not found. Please ensure Unity is installed and accessible."
+    exit 1
+fi
+
+# Convert WSL path to Windows path for Unity
+get_project_path() {
+    if [[ $(pwd) == /mnt/c/* ]]; then
+        echo $(pwd | sed 's|/mnt/c|C:|')
+    else
+        echo $(pwd)
+    fi
+}
+
+# Execute Unity command with proper logging
+execute_unity_command() {
+    local method="$1"
+    shift
+    local args="$@"
+    
+    PROJECT_PATH=$(get_project_path)
+    
+    "$UNITY_PATH" \
+        -batchmode \
+        -quit \
+        -projectPath "$PROJECT_PATH" \
+        -executeMethod "$method" \
+        $args \
+        -logFile - 2>/dev/null | grep -E "\[UnityCLI\]"
+    
+    return ${PIPESTATUS[0]}
+}
+
+# Show version information
+show_version() {
+    echo "Unity Vibe CLI v$VERSION"
+    echo "A command-line interface for Unity development workflow automation"
+}
+
+# Show general help
+show_help() {
+    echo "Unity Vibe CLI - Unified Command Interface"
+    echo ""
+    echo "USAGE:"
+    echo "    vibe-unity <COMMAND> [OPTIONS]"
+    echo ""
+    echo "COMMANDS:"
+    echo "    create-scene    Create a new Unity scene"
+    echo "    list-types      List available scene types"
+    echo "    add-canvas      Add canvas to current scene"
+    echo "    help            Show detailed help information"
+    echo ""
+    echo "GLOBAL OPTIONS:"
+    echo "    -h, --help      Show help for command"
+    echo "    -v, --version   Show version information"
+    echo ""
+    echo "EXAMPLES:"
+    echo "    vibe-unity create-scene MyScene Assets/Scenes"
+    echo "    vibe-unity create-scene GameScene Assets/Scenes/Game --type DefaultGameObjects --build"
+    echo "    vibe-unity list-types"
+    echo "    vibe-unity add-canvas MainCanvas --mode ScreenSpaceOverlay"
+    echo "    vibe-unity help create-scene"
+    echo ""
+    echo "For detailed help on a specific command:"
+    echo "    vibe-unity help <COMMAND>"
+    echo "    vibe-unity <COMMAND> --help"
+}
+
+# Show help for create-scene command
+show_create_scene_help() {
+    echo "Create a new Unity scene"
+    echo ""
+    echo "USAGE:"
+    echo "    vibe-unity create-scene <SCENE_NAME> <SCENE_PATH> [OPTIONS]"
+    echo ""
+    echo "ARGUMENTS:"
+    echo "    <SCENE_NAME>    Name of the scene to create"
+    echo "    <SCENE_PATH>    Directory path where scene will be created"
+    echo ""
+    echo "OPTIONS:"
+    echo "    -t, --type <TYPE>       Scene type (default: DefaultGameObjects)"
+    echo "    -b, --build             Add scene to build settings"
+    echo "    -h, --help              Show this help message"
+    echo ""
+    echo "SCENE TYPES:"
+    echo "    Empty               Completely empty scene"
+    echo "    DefaultGameObjects  Scene with Main Camera and Directional Light"
+    echo "    2D                  2D optimized scene setup"
+    echo "    3D                  3D optimized scene setup"
+    echo "    URP                 Universal Render Pipeline optimized"
+    echo ""
+    echo "EXAMPLES:"
+    echo "    vibe-unity create-scene MyScene Assets/Scenes"
+    echo "    vibe-unity create-scene GameScene Assets/Scenes/Game --type 3D --build"
+    echo "    vibe-unity create-scene UIScene Assets/Scenes/UI -t 2D"
+}
+
+# Show help for add-canvas command  
+show_add_canvas_help() {
+    echo "Add canvas to the currently active Unity scene"
+    echo ""
+    echo "USAGE:"
+    echo "    vibe-unity add-canvas <CANVAS_NAME> [OPTIONS]"
+    echo ""
+    echo "ARGUMENTS:"
+    echo "    <CANVAS_NAME>    Name for the canvas GameObject"
+    echo ""
+    echo "OPTIONS:"
+    echo "    -m, --mode <MODE>       Render mode (default: ScreenSpaceOverlay)"
+    echo "    -w, --width <WIDTH>     Reference width (default: 1920)"
+    echo "    -h, --height <HEIGHT>   Reference height (default: 1080)"
+    echo "    -s, --scale <SCALE>     Scale mode (default: ScaleWithScreenSize)"
+    echo "    --help                  Show this help message"
+    echo ""
+    echo "RENDER MODES:"
+    echo "    ScreenSpaceOverlay      Canvas rendered on top of everything"
+    echo "    ScreenSpaceCamera       Canvas rendered by specific camera"
+    echo "    WorldSpace              Canvas positioned in world space"
+    echo ""
+    echo "SCALE MODES:"
+    echo "    ConstantPixelSize       UI elements stay same pixel size"
+    echo "    ScaleWithScreenSize     UI elements scale with screen size"
+    echo "    ConstantPhysicalSize    UI elements stay same physical size"
+    echo ""
+    echo "EXAMPLES:"
+    echo "    vibe-unity add-canvas MainCanvas"
+    echo "    vibe-unity add-canvas UICanvas --mode ScreenSpaceOverlay --width 1920 --height 1080"
+    echo "    vibe-unity add-canvas WorldCanvas -m WorldSpace"
+}
+
+# Create scene command
+cmd_create_scene() {
+    local scene_name=""
+    local scene_path=""
+    local scene_type="DefaultGameObjects"
+    local add_to_build="false"
+    
+    # Parse arguments
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            -t|--type)
+                scene_type="$2"
+                shift 2
+                ;;
+            -b|--build)
+                add_to_build="true"
+                shift
+                ;;
+            -h|--help)
+                show_create_scene_help
+                exit 0
+                ;;
+            -*)
+                echo "Error: Unknown option $1"
+                echo "Use 'vibe-unity create-scene --help' for usage information."
+                exit 1
+                ;;
+            *)
+                if [[ -z "$scene_name" ]]; then
+                    scene_name="$1"
+                elif [[ -z "$scene_path" ]]; then
+                    scene_path="$1"
+                else
+                    echo "Error: Too many arguments"
+                    echo "Use 'vibe-unity create-scene --help' for usage information."
+                    exit 1
+                fi
+                shift
+                ;;
+        esac
+    done
+    
+    # Validate required arguments
+    if [[ -z "$scene_name" ]] || [[ -z "$scene_path" ]]; then
+        echo "Error: Missing required arguments"
+        echo "Use 'vibe-unity create-scene --help' for usage information."
+        exit 1
+    fi
+    
+    echo "Unity Vibe CLI - Creating Scene"
+    echo "================================"
+    echo "Scene Name: $scene_name"
+    echo "Scene Path: $scene_path"
+    echo "Scene Type: $scene_type"
+    echo "Add to Build: $add_to_build"
+    echo "Project Path: $(get_project_path)"
+    echo ""
+    
+    # Execute Unity command
+    "$UNITY_PATH" \
+        -batchmode \
+        -quit \
+        -projectPath "$(get_project_path)" \
+        -executeMethod UnityVibe.Editor.CLI.CreateSceneFromCommandLine \
+        "$scene_name" \
+        "$scene_path" \
+        "$scene_type" \
+        "$add_to_build"
+    
+    if [ $? -eq 0 ]; then
+        echo ""
+        echo "✅ Scene created successfully: $scene_path/$scene_name.unity"
+    else
+        echo ""
+        echo "❌ Failed to create scene. Check Unity console for details."
+        exit 1
+    fi
+}
+
+# List types command
+cmd_list_types() {
+    # Parse arguments
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            -h|--help)
+                echo "List available scene types for your Unity installation"
+                echo ""
+                echo "USAGE:"
+                echo "    vibe-unity list-types"
+                echo ""
+                echo "This command shows all scene types available in your current Unity installation,"
+                echo "including render pipeline specific types if installed."
+                exit 0
+                ;;
+            -*)
+                echo "Error: Unknown option $1"
+                echo "Use 'vibe-unity list-types --help' for usage information."
+                exit 1
+                ;;
+            *)
+                echo "Error: Unexpected argument $1"
+                echo "Use 'vibe-unity list-types --help' for usage information."
+                exit 1
+                ;;
+        esac
+    done
+    
+    echo "Unity Vibe CLI - Available Scene Types"
+    echo "======================================"
+    echo "Project Path: $(get_project_path)"
+    echo ""
+    
+    execute_unity_command "UnityVibe.Editor.CLI.ListSceneTypesFromCommandLine"
+    
+    if [ $? -eq 0 ]; then
+        echo ""
+        echo "✅ Scene types listed successfully"
+    else
+        echo ""
+        echo "❌ Failed to list scene types. Check Unity console for details."
+        exit 1
+    fi
+}
+
+# Add canvas command
+cmd_add_canvas() {
+    local canvas_name=""
+    local render_mode="ScreenSpaceOverlay"
+    local width="1920"
+    local height="1080"
+    local scale_mode="ScaleWithScreenSize"
+    
+    # Parse arguments
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            -m|--mode)
+                render_mode="$2"
+                shift 2
+                ;;
+            -w|--width)
+                width="$2"
+                shift 2
+                ;;
+            --height)
+                height="$2"
+                shift 2
+                ;;
+            -s|--scale)
+                scale_mode="$2"
+                shift 2
+                ;;
+            -h|--help)
+                show_add_canvas_help
+                exit 0
+                ;;
+            -*)
+                echo "Error: Unknown option $1"
+                echo "Use 'vibe-unity add-canvas --help' for usage information."
+                exit 1
+                ;;
+            *)
+                if [[ -z "$canvas_name" ]]; then
+                    canvas_name="$1"
+                else
+                    echo "Error: Too many arguments"
+                    echo "Use 'vibe-unity add-canvas --help' for usage information."
+                    exit 1
+                fi
+                shift
+                ;;
+        esac
+    done
+    
+    # Validate required arguments
+    if [[ -z "$canvas_name" ]]; then
+        echo "Error: Missing required canvas name"
+        echo "Use 'vibe-unity add-canvas --help' for usage information."
+        exit 1
+    fi
+    
+    echo "Unity Vibe CLI - Adding Canvas"
+    echo "=============================="
+    echo "Canvas Name: $canvas_name"
+    echo "Render Mode: $render_mode"
+    echo "Resolution: ${width}x${height}"
+    echo "Scale Mode: $scale_mode"
+    echo "Project Path: $(get_project_path)"
+    echo ""
+    
+    # Execute Unity command
+    "$UNITY_PATH" \
+        -batchmode \
+        -quit \
+        -projectPath "$(get_project_path)" \
+        -executeMethod UnityVibe.Editor.CLI.AddCanvasFromCommandLine \
+        "$canvas_name" \
+        "$render_mode" \
+        "$width" \
+        "$height" \
+        "$scale_mode"
+    
+    if [ $? -eq 0 ]; then
+        echo ""
+        echo "✅ Canvas added successfully: $canvas_name"
+    else
+        echo ""
+        echo "❌ Failed to add canvas. Check Unity console for details."
+        exit 1
+    fi
+}
+
+# Help command
+cmd_help() {
+    if [[ $# -eq 0 ]]; then
+        show_help
+        return
+    fi
+    
+    case $1 in
+        create-scene)
+            show_create_scene_help
+            ;;
+        add-canvas)
+            show_add_canvas_help
+            ;;
+        list-types)
+            echo "List available scene types for your Unity installation"
+            echo ""
+            echo "USAGE:"
+            echo "    vibe-unity list-types"
+            echo ""
+            echo "This command shows all scene types available in your current Unity installation."
+            ;;
+        help)
+            echo "Show help information for Unity Vibe CLI commands"
+            echo ""
+            echo "USAGE:"
+            echo "    vibe-unity help [COMMAND]"
+            echo ""
+            echo "If no command is specified, shows general help."
+            ;;
+        *)
+            echo "Error: Unknown command '$1'"
+            echo "Use 'vibe-unity help' to see available commands."
+            exit 1
+            ;;
+    esac
+}
+
+# Main command dispatcher
+main() {
+    # Check for no arguments
+    if [[ $# -eq 0 ]]; then
+        show_help
+        exit 0
+    fi
+    
+    # Handle global flags
+    case $1 in
+        -v|--version)
+            show_version
+            exit 0
+            ;;
+        -h|--help)
+            show_help
+            exit 0
+            ;;
+    esac
+    
+    # Handle commands
+    local command="$1"
+    shift
+    
+    case $command in
+        create-scene)
+            cmd_create_scene "$@"
+            ;;
+        list-types)
+            cmd_list_types "$@"
+            ;;
+        add-canvas)
+            cmd_add_canvas "$@"
+            ;;
+        help)
+            cmd_help "$@"
+            ;;
+        *)
+            echo "Error: Unknown command '$command'"
+            echo "Use 'vibe-unity --help' to see available commands."
+            exit 1
+            ;;
+    esac
+}
+
+# Run main function with all arguments
+main "$@"

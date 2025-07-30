@@ -1,0 +1,103 @@
+#!/bin/bash
+
+# Unity Vibe CLI - Installation Script for WSL
+# This script sets up the vibe-unity command for use from anywhere in WSL
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+VIBE_UNITY_PATH="$SCRIPT_DIR/vibe-unity"
+BASHRC_FILE="$HOME/.bashrc"
+ZSHRC_FILE="$HOME/.zshrc"
+
+echo "Unity Vibe CLI - WSL Installation"
+echo "=================================="
+echo ""
+
+# Check if vibe-unity script exists
+if [ ! -f "$VIBE_UNITY_PATH" ]; then
+    echo "❌ Error: vibe-unity script not found at $VIBE_UNITY_PATH"
+    exit 1
+fi
+
+# Make sure the script is executable
+chmod +x "$VIBE_UNITY_PATH"
+
+# Function to add to shell config
+add_to_shell_config() {
+    local config_file="$1"
+    local shell_name="$2"
+    
+    if [ -f "$config_file" ]; then
+        # Check if already added
+        if grep -q "vibe-unity" "$config_file"; then
+            echo "✅ vibe-unity already configured in $shell_name"
+            return 0
+        fi
+        
+        echo "" >> "$config_file"
+        echo "# Unity Vibe CLI" >> "$config_file"
+        echo "export PATH=\"$SCRIPT_DIR:\$PATH\"" >> "$config_file"
+        echo "✅ Added vibe-unity to $shell_name PATH"
+        return 0
+    fi
+    return 1
+}
+
+# Try to add to shell configurations
+ADDED_TO_SHELL=false
+
+if add_to_shell_config "$BASHRC_FILE" "bash"; then
+    ADDED_TO_SHELL=true
+fi
+
+if add_to_shell_config "$ZSHRC_FILE" "zsh"; then
+    ADDED_TO_SHELL=true
+fi
+
+if [ "$ADDED_TO_SHELL" = false ]; then
+    echo "⚠️  No shell configuration file found (.bashrc or .zshrc)"
+    echo "   Manual setup required:"
+    echo "   Add this line to your shell configuration:"
+    echo "   export PATH=\"$SCRIPT_DIR:\$PATH\""
+    echo ""
+fi
+
+# Test Unity installation
+echo ""
+echo "🔍 Checking Unity installation..."
+
+if command -v /mnt/c/Program\ Files/Unity/Hub/Editor/*/Editor/Unity.exe >/dev/null 2>&1; then
+    UNITY_PATH=$(find /mnt/c/Program\ Files/Unity/Hub/Editor/*/Editor/Unity.exe | head -1)
+    echo "✅ Unity found at: $UNITY_PATH"
+else
+    echo "❌ Unity Editor not found in standard locations"
+    echo "   Please ensure Unity is installed via Unity Hub"
+    echo "   Expected location: /mnt/c/Program Files/Unity/Hub/Editor/*/Editor/Unity.exe"
+fi
+
+echo ""
+echo "🎉 Installation complete!"
+echo ""
+echo "To use vibe-unity from anywhere:"
+echo "1. Restart your terminal or run: source ~/.bashrc"
+echo "2. Navigate to your Unity project directory"
+echo "3. Run: vibe-unity --help"
+echo ""
+echo "Important notes for Unity package users:"
+echo "• This script must be run from your Unity project's Scripts/ directory"
+echo "• The vibe-unity command will only work within Unity projects that include this package"
+echo "• Unity Editor must be closed before running CLI commands"
+echo ""
+
+# Test if we can run vibe-unity
+echo "🧪 Testing installation..."
+if "$VIBE_UNITY_PATH" --version >/dev/null 2>&1; then
+    echo "✅ vibe-unity is working correctly"
+else
+    echo "❌ vibe-unity test failed - check Unity installation"
+fi
+
+echo ""
+echo "Installation summary:"
+echo "• Script location: $VIBE_UNITY_PATH"
+echo "• Added to PATH: $ADDED_TO_SHELL"
+echo "• Unity detected: $([ -n "$UNITY_PATH" ] && echo "Yes" || echo "No")"

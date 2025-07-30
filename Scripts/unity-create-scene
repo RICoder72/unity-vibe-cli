@@ -38,7 +38,12 @@ SCENE_TYPE="${3:-DefaultGameObjects}"
 ADD_TO_BUILD="${4:-false}"
 
 # Get current directory (assuming it's the Unity project root)
-PROJECT_PATH=$(pwd)
+# Convert WSL path to Windows path for Unity
+if [[ $(pwd) == /mnt/c/* ]]; then
+    PROJECT_PATH=$(pwd | sed 's|/mnt/c|C:|')
+else
+    PROJECT_PATH=$(pwd)
+fi
 
 echo "Unity Vibe CLI - Creating Scene"
 echo "================================"

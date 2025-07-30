@@ -16,19 +16,25 @@ else
 fi
 
 # Get current directory (assuming it's the Unity project root)
-PROJECT_PATH=$(pwd)
+# Convert WSL path to Windows path for Unity
+if [[ $(pwd) == /mnt/c/* ]]; then
+    PROJECT_PATH=$(pwd | sed 's|/mnt/c|C:|')
+else
+    PROJECT_PATH=$(pwd)
+fi
 
 echo "Unity Vibe CLI - Help"
 echo "===================="
 echo "Project Path: $PROJECT_PATH"
 echo ""
 
-# Execute Unity command
+# Execute Unity command with log output
 "$UNITY_PATH" \
     -batchmode \
     -quit \
     -projectPath "$PROJECT_PATH" \
-    -executeMethod UnityVibe.Editor.CLI.ShowHelpFromCommandLine
+    -executeMethod UnityVibe.Editor.CLI.ShowHelpFromCommandLine \
+    -logFile - 2>/dev/null | grep -E "\[UnityCLI\]"
 
 # Check exit code
 if [ $? -eq 0 ]; then

@@ -225,20 +225,86 @@ Access Unity Vibe CLI features directly from Unity's menu:
 
 ## 🔍 Troubleshooting
 
+### WSL (Windows Subsystem for Linux) Configuration
+
+**Important for WSL Users:**
+- **Unity Editor must be closed** before running CLI commands in batch mode
+- Scripts automatically convert WSL paths (`/mnt/c/*`) to Windows paths (`C:/*`)
+- Unity installation path is auto-detected from common locations
+- All bash scripts are executable and ready to use
+
+**Current Working CLI Commands:**
+```bash
+# Create a new scene (Unity Editor must be closed)
+./Scripts/unity-create-scene MyScene Assets/Scenes/Test DefaultGameObjects false
+
+# List available scene types  
+./Scripts/unity-list-types
+
+# Show help documentation
+./Scripts/unity-cli-help
+
+# Add canvas (requires Unity UI package - currently disabled)
+./Scripts/unity-add-canvas MainCanvas ScreenSpaceOverlay 1920 1080
+```
+
+**Expected Output:**
+```bash
+$ ./Scripts/unity-create-scene MyNewScene Assets/Scenes/Test DefaultGameObjects false
+Unity Vibe CLI - Creating Scene
+================================
+Scene Name: MyNewScene
+Scene Path: Assets/Scenes/Test  
+Scene Type: DefaultGameObjects
+Add to Build: false
+Project Path: C:/repos/unity-vibe-cli
+
+✅ Scene created successfully: Assets/Scenes/Test/MyNewScene.unity
+
+$ ./Scripts/unity-list-types
+Unity Vibe CLI - Available Scene Types
+======================================
+Project Path: C:/repos/unity-vibe-cli
+
+[UnityCLI] === Available Scene Types ===
+[UnityCLI] Available scene types: Empty, DefaultGameObjects, 2D, 3D, URP
+[UnityCLI] Scene Type Descriptions:
+[UnityCLI]   Empty - Completely empty scene
+[UnityCLI]   DefaultGameObjects - Scene with Main Camera and Directional Light
+[UnityCLI]   2D - 2D optimized scene setup
+[UnityCLI]   3D - 3D optimized scene setup with skybox
+[UnityCLI]   URP - Universal Render Pipeline optimized scene
+[UnityCLI] ===========================
+
+✅ Scene types listed successfully
+```
+
 ### Common Issues
+
+**"Multiple Unity instances cannot open the same project"**
+- **Solution**: Close Unity Editor completely before running CLI commands
+- This is a Unity limitation with batch mode operations
+- Scripts work perfectly once Unity Editor is closed
 
 **"Unity Editor not found"**
 - Ensure Unity is installed and accessible in PATH
-- For WSL: Verify Unity installation path in bash scripts
-- Try using absolute path to Unity executable
+- For WSL: Scripts auto-detect Unity from `/mnt/c/Program Files/Unity/Hub/Editor/*/Editor/Unity.exe`
+- If detection fails, manually update `UNITY_PATH` in scripts
+
+**"Couldn't set project path"** 
+- This was fixed by implementing WSL path conversion in scripts
+- Paths are automatically converted from `/mnt/c/*` to `C:/*` format
+- No manual configuration needed
 
 **"No active scene to add canvas to"**
-- Open a scene in Unity Editor before adding canvas
+- Open a scene in Unity Editor before adding canvas  
 - Create a new scene first using `unity-create-scene`
+- Canvas functionality requires Unity UI package (currently commented out)
 
 **"Scene already exists"**
 - Check if scene file already exists at the specified path
 - Use a different scene name or path
+- CLI will warn you with: `[UnityCLI] Scene already exists: path/to/scene.unity`
 
 ### Debug Information
 

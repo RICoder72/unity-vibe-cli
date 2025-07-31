@@ -1,5 +1,5 @@
 {
-    "name": "com.vibe.unity",
+    "name": "com.ricoder.vibeunity",
     "version": "1.0.0",
     "displayName": "Vibe Unity",
     "description": "Command Line Interface tools for Unity development workflow automation. Provides scene creation, canvas management, and project analysis capabilities with WSL integration.",

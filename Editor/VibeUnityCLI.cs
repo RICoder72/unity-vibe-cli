@@ -330,7 +330,7 @@ namespace VibeUnity.Editor
                 canvas.sortingOrder = sortingOrder;
                 
                 // Set vertex color always in gamma space for UI consistency
-                canvas.vertexColorAlwaysInGammaSpace = true;
+                canvas.vertexColorAlwaysGammaSpace = true;
                 
                 // Configure canvas scaler
                 scaler.uiScaleMode = ParseScaleMode(scaleMode);
@@ -1809,141 +1809,7 @@ namespace VibeUnity.Editor
             Debug.Log("[VibeUnityCLI] File watcher disabled");
         }
         
-        #endregion
-        
-        #region Debug and Testing Methods
-        
-        /// <summary>
-        /// Debug method to show current CLI configuration and capabilities
-        /// </summary>
-        private static void DebugUnityCLI()
-        {
-            Debug.Log("=== Vibe Unity Configuration ===");
-            
-            var sceneTypes = GetAvailableSceneTypes();
-            Debug.Log($"Available Scene Types: {string.Join(", ", sceneTypes)}");
-            
-            Debug.Log($"Current Scene: {SceneManager.GetActiveScene().path}");
-            Debug.Log($"Build Settings Scenes: {EditorBuildSettings.scenes.Length}");
-            
-            foreach (var scene in EditorBuildSettings.scenes)
-            {
-                Debug.Log($"  - {scene.path} (enabled: {scene.enabled})");
-            }
-            
-            // Check render pipeline
-            if (UnityEngine.Rendering.GraphicsSettings.defaultRenderPipeline != null)
-            {
-                Debug.Log($"Render Pipeline: {UnityEngine.Rendering.GraphicsSettings.defaultRenderPipeline.GetType().Name}");
-            }
-            else
-            {
-                Debug.Log("Render Pipeline: Built-in");
-            }
-            
-            Debug.Log("Canvas Render Modes: ScreenSpaceOverlay, ScreenSpaceCamera, WorldSpace");
-            Debug.Log("Canvas Scale Modes: ConstantPixelSize, ScaleWithScreenSize, ConstantPhysicalSize");
-            
-            Debug.Log("========================================");
-        }
-        
-        /// <summary>
-        /// Test method to validate CLI functionality
-        /// </summary>
-        private static void TestUnityCLI()
-        {
-            Debug.Log("[UnityCLI Test] Starting CLI functionality test...");
-            
-            // Test scene type listing
-            ListSceneTypes();
-            
-            // Test smart scene detection
-            Debug.Log("[UnityCLI Test] Testing smart scene detection...");
-            string smartScene = GetMostRecentScene();
-            Debug.Log($"[UnityCLI Test] Smart scene result: {smartScene ?? "null"}");
-            
-            // Test canvas creation in current scene
-            bool canvasSuccess = AddCanvas("TestCanvas", null, "ScreenSpaceOverlay", 1920, 1080, "ScaleWithScreenSize");
-            if (canvasSuccess)
-            {
-                Debug.Log("[UnityCLI Test] ✅ Canvas creation successful");
-            }
-            else
-            {
-                Debug.LogError("[UnityCLI Test] ❌ Canvas creation failed");
-            }
-            
-            Debug.Log("[UnityCLI Test] Test completed. Check console for detailed results.");
-        }
-        
-        /// <summary>
-        /// Test smart scene detection only
-        /// </summary>
-        private static void TestSmartSceneDetection()
-        {
-            Debug.Log("[UnityCLI Test] Testing smart scene detection...");
-            
-            string smartScene = GetMostRecentScene();
-            if (!string.IsNullOrEmpty(smartScene))
-            {
-                Debug.Log($"[UnityCLI Test] ✅ Smart detection found: {smartScene}");
-                Debug.Log($"[UnityCLI Test]    Scene name: {System.IO.Path.GetFileNameWithoutExtension(smartScene)}");
-                Debug.Log($"[UnityCLI Test]    Last modified: {System.IO.File.GetLastWriteTime(smartScene)}");
-            }
-            else
-            {
-                Debug.LogWarning("[UnityCLI Test] ❌ Smart detection returned null");
-            }
-        }
-        
-        /// <summary>
-        /// Execute batch file from Unity editor
-        /// </summary>
-        private static void ExecuteBatchFileFromMenu()
-        {
-            string path = EditorUtility.OpenFilePanel("Select Batch JSON File", Application.dataPath, "json");
-            if (!string.IsNullOrEmpty(path))
-            {
-                Debug.Log($"[VibeUnityCLI] Executing batch file from menu: {path}");
-                bool success = ExecuteBatchFile(path);
-                if (success)
-                {
-                    Debug.Log("[VibeUnityCLI] ✅ Batch file executed successfully from menu");
-                    EditorUtility.DisplayDialog("Batch Execution", "Batch file executed successfully!", "OK");
-                }
-                else
-                {
-                    Debug.LogError("[VibeUnityCLI] ❌ Batch file execution failed");
-                    EditorUtility.DisplayDialog("Batch Execution", "Batch file execution failed. Check console for details.", "OK");
-                }
-            }
-        }
-        
-        /// <summary>
-        /// Quick test to create canvas in current scene
-        /// </summary>
-        private static void QuickTestAddCanvas()
-        {
-            Debug.Log("[UnityCLI Test] Quick test - adding canvas to current scene");
-            
-            Scene currentScene = SceneManager.GetActiveScene();
-            Debug.Log($"[UnityCLI Test] Current scene: {currentScene.name} (path: {currentScene.path})");
-            
-            bool success = AddCanvas("QuickTestCanvas", null, "ScreenSpaceOverlay", 1920, 1080, "ScaleWithScreenSize");
-            
-            if (success)
-            {
-                Debug.Log("[UnityCLI Test] ✅ Canvas added successfully from menu");
-                EditorUtility.DisplayDialog("Quick Test", "Canvas added successfully!", "OK");
-            }
-            else
-            {
-                Debug.LogError("[UnityCLI Test] ❌ Failed to add canvas");
-                EditorUtility.DisplayDialog("Quick Test", "Failed to add canvas. Check console for details.", "OK");
-            }
-        }
-        
-        #endregion
+        #endregion       
     }
 }
 #endif

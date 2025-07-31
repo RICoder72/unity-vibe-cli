@@ -145,7 +145,6 @@ crash.dmp*
 [Pp]rojectSettings/
 [Pp]ackages/
 [Aa]ssets/
-*.json.meta
 batch-schema.json
 *-test.json
 example-*.json

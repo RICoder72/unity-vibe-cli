@@ -291,10 +291,102 @@ Access Vibe Unity features directly from Unity's menu:
 
 ## 🔍 Troubleshooting
 
+### HTTP Server Setup (WSL + Unity)
+
+**The Vibe Unity package includes an HTTP server that allows WSL to communicate directly with Unity Editor while it's running:**
+
+✅ **HTTP Server Features:**
+- Runs on port 9876 by default
+- Allows scene creation and canvas management while Unity is open
+- No need to close Unity Editor for CLI commands
+- Automatic startup when Unity Editor loads
+
+**WSL-Windows Networking Setup:**
+1. **Server Binding**: HTTP server binds to all interfaces (`http://*:9876/`)
+2. **Windows Firewall**: Create firewall rule for port 9876
+3. **Network Profile**: Ensure correct Windows network profile settings
+
+**Quick Firewall Setup (Administrator PowerShell):**
+```powershell
+# Create firewall rule for Unity HTTP server
+New-NetFirewallRule -DisplayName "Unity Vibe HTTP Server" -Direction Inbound -Protocol TCP -LocalPort 9876 -Action Allow -Profile Domain,Private,Public
+
+# Alternative: Temporary disable for testing (remember to re-enable)
+Set-NetFirewallProfile -Profile Public -Enabled False
+# Test your connection...
+Set-NetFirewallProfile -Profile Public -Enabled True
+```
+
+**Testing HTTP Server Connection:**
+```bash
+# From WSL - test basic connectivity
+curl http://172.20.32.1:9876/
+
+# Test scene creation via HTTP
+curl -X POST http://172.20.32.1:9876/execute -H "Content-Type: application/json" -d '{"action":"create-scene","parameters":{"name":"TestScene","path":"Assets/Scenes"}}'
+```
+
+**From Windows PowerShell:**
+```powershell
+# Test server is responding
+Invoke-WebRequest -Uri "http://localhost:9876/"
+
+# Create scene via HTTP API
+$headers = @{"Content-Type" = "application/json"}
+$body = '{"action":"create-scene","parameters":{"name":"TestScene","path":"Assets/Scenes"}}'
+Invoke-WebRequest -Uri "http://localhost:9876/execute" -Method POST -Headers $headers -Body $body
+```
+
+**Unity Menu Controls:**
+- `Tools → Vibe Unity → HTTP Server Enabled` - Toggle server on/off
+- `Tools → Vibe Unity → Configuration` - View server settings
+- Server status shown in Unity Console on startup
+
+**Common Firewall Issues:**
+
+⚠️ **If firewall rules don't work as expected:**
+
+Some Windows configurations (corporate networks, advanced security software) may block WSL→Windows connections even with proper firewall rules. Here are solutions:
+
+1. **Temporary Testing** (Development environments):
+   ```powershell
+   # Disable Public firewall temporarily
+   Set-NetFirewallProfile -Profile Public -Enabled False
+   # Test your WSL connection...
+   Set-NetFirewallProfile -Profile Public -Enabled True
+   ```
+
+2. **Create Development Toggle Script** (`toggle-firewall.bat`):
+   ```batch
+   @echo off
+   if "%1"=="off" (
+       echo Disabling Public Firewall for Unity development...
+       powershell -Command "Set-NetFirewallProfile -Profile Public -Enabled False"
+   ) else if "%1"=="on" (
+       echo Re-enabling Public Firewall...
+       powershell -Command "Set-NetFirewallProfile -Profile Public -Enabled True"
+   ) else (
+       echo Usage: toggle-firewall.bat [on^|off]
+   )
+   ```
+
+3. **Check for Conflicting Rules:**
+   ```powershell
+   # List all Unity-related firewall rules
+   Get-NetFirewallRule -DisplayName "*Unity*" | Select-Object DisplayName, Direction, Action, Enabled
+   
+   # Disable Unity blocking rules if they conflict
+   Get-NetFirewallRule -DisplayName "*Unity*" -Action Block | Disable-NetFirewallRule
+   ```
+
+4. **Alternative Port Testing:**
+   If port 9876 is blocked, modify the server to use a different port in `VibeUnityHttpServer.cs`.
+
 ### WSL (Windows Subsystem for Linux) Configuration
 
 **Important for WSL Users:**
-- **Unity Editor must be closed** before running CLI commands in batch mode
+- **HTTP Server Method**: Preferred - allows Unity Editor to stay open
+- **Batch Mode Method**: Fallback - requires Unity Editor to be closed
 - Scripts automatically convert WSL paths (`/mnt/c/*`) to Windows paths (`C:/*`)
 - Unity installation path is auto-detected from common locations
 - All bash scripts are executable and ready to use
@@ -414,6 +506,115 @@ vibe-unity add-button PlayBtn MenuPanel --text "Play Game"
 5. Results are reported back to Claude Code
 
 No manual intervention required!
+
+## 📋 CLAUDE.md Template
+
+**Copy this section into your project's `CLAUDE.md` file to help Claude Code understand how to use Vibe Unity:**
+
+````markdown
+# Unity Development with Vibe Unity
+
+This Unity project includes the **Vibe Unity** package for AI-assisted Unity development.
+
+## Available Unity Tools
+
+### HTTP Server API (Preferred - Unity can stay open)
+
+The Unity Editor runs an HTTP server on port 9876 that accepts JSON commands:
+
+```bash
+# Test server connectivity
+curl http://172.20.32.1:9876/
+
+# Create scene via HTTP API
+curl -X POST http://172.20.32.1:9876/execute \
+  -H "Content-Type: application/json" \
+  -d '{"action":"create-scene","parameters":{"name":"TestScene","path":"Assets/Scenes"}}'
+
+# Add canvas via HTTP API  
+curl -X POST http://172.20.32.1:9876/execute \
+  -H "Content-Type: application/json" \
+  -d '{"action":"add-canvas","parameters":{"name":"MainCanvas"}}'
+```
+
+**Available HTTP Actions:**
+- `create-scene` - Create Unity scenes with parameters: `name`, `path`, `type`, `addToBuild`
+- `add-canvas` - Add UI canvas with parameters: `name`, `renderMode`, `referenceWidth`, `referenceHeight`
+
+### CLI Commands (Fallback - Unity must be closed)
+
+If HTTP server isn't available, use these batch mode commands:
+
+```bash
+# Scene creation
+vibe-unity create-scene <SCENE_NAME> <SCENE_PATH> [--type TYPE] [--build]
+
+# Canvas management  
+vibe-unity add-canvas <CANVAS_NAME> [--mode MODE] [--width WIDTH] [--height HEIGHT]
+
+# UI elements
+vibe-unity add-panel <PANEL_NAME> [--parent PARENT] [--width WIDTH] [--height HEIGHT]
+vibe-unity add-button <BUTTON_NAME> [--parent PARENT] [--text TEXT]
+vibe-unity add-text <TEXT_NAME> [--parent PARENT] [--text CONTENT] [--size SIZE]
+
+# Utilities
+vibe-unity list-types     # Show available scene types
+vibe-unity --help         # Show all commands
+```
+
+## Scene Types Available
+- `Empty` - Completely empty scene
+- `DefaultGameObjects` - Scene with Main Camera and Directional Light  
+- `2D` - 2D optimized scene setup
+- `3D` - 3D optimized scene setup with skybox
+- `URP` - Universal Render Pipeline optimized (if URP installed)
+- `HDRP` - High Definition Render Pipeline optimized (if HDRP installed)
+
+## Canvas Render Modes
+- `ScreenSpaceOverlay` - UI renders on top of everything
+- `ScreenSpaceCamera` - UI renders with camera perspective
+- `WorldSpace` - UI exists in 3D world space
+
+## Usage Examples
+
+```bash
+# Create a complete UI setup
+vibe-unity create-scene MainMenu Assets/Scenes/UI --type 2D --build
+vibe-unity add-canvas MenuCanvas --mode ScreenSpaceOverlay --width 1920 --height 1080
+vibe-unity add-panel MenuPanel --parent MenuCanvas --width 600 --height 400
+vibe-unity add-button PlayButton --parent MenuPanel --text "Play Game"
+vibe-unity add-button SettingsButton --parent MenuPanel --text "Settings"
+vibe-unity add-text TitleText --parent MenuPanel --text "Game Title" --size 32
+
+# Create game levels
+vibe-unity create-scene Level1 Assets/Scenes/Levels --type 3D --build
+vibe-unity create-scene Level2 Assets/Scenes/Levels --type 3D --build
+```
+
+## Important Notes
+
+- **HTTP Method**: Preferred method, Unity Editor can stay open
+- **CLI Method**: Requires Unity Editor to be closed first
+- **WSL Users**: HTTP server handles WSL→Windows communication automatically
+- **Firewall**: May need Windows Firewall rule for port 9876 (see Vibe Unity README)
+- **Paths**: Use forward slashes in paths (e.g., `Assets/Scenes/UI`)
+- **Output**: Commands provide detailed success/error feedback
+
+## Troubleshooting
+
+**HTTP Server Not Responding:**
+1. Check Unity Editor console for server startup messages
+2. Verify `Tools → Vibe Unity → HTTP Server Enabled` is checked
+3. Test Windows firewall: `netstat -an | findstr :9876`
+4. For WSL: May need to disable Windows Public firewall temporarily
+
+**CLI Commands Failing:**
+1. Ensure Unity Editor is completely closed
+2. Verify project path is correct
+3. Check Unity installation is accessible
+
+This tool enables rapid Unity scene and UI creation through simple commands!
+````
 
 ### Additional Resources
 

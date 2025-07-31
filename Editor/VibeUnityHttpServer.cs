@@ -50,7 +50,7 @@ namespace VibeUnity.Editor
             try
             {
                 listener = new HttpListener();
-                listener.Prefixes.Add($"http://localhost:{PORT}/");
+                listener.Prefixes.Add($"http://*:{PORT}/");
                 listener.Start();
                 isRunning = true;
                 

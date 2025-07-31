@@ -35,6 +35,160 @@ get_project_path() {
     fi
 }
 
+# Create JSON batch file for create-scene command and queue it via file watcher
+create_scene_batch_file() {
+    local scene_name="$1"
+    local scene_path="$2"
+    local scene_type="${3:-DefaultGameObjects}"
+    local add_to_build="${4:-false}"
+    
+    # Create .vibe-commands directory if it doesn't exist
+    local command_dir=".vibe-commands"
+    mkdir -p "$command_dir"
+    
+    # Generate unique filename with timestamp
+    local timestamp=$(date +%Y%m%d-%H%M%S-%N)
+    local batch_file="$command_dir/create-scene-$timestamp.json"
+    
+    # Create JSON batch file
+    cat > "$batch_file" << EOF
+{
+  "version": "1.0",
+  "description": "Auto-generated: Create scene $scene_name",
+  "commands": [
+    {
+      "action": "create-scene",
+      "name": "$scene_name",
+      "path": "$scene_path",
+      "type": "$scene_type",
+      "addToBuild": $add_to_build
+    }
+  ]
+}
+EOF
+    
+    echo "📁 Generated batch file: $(basename "$batch_file")"
+    echo "🔍 Unity will automatically process this file via file watcher"
+    echo "💡 Check Unity Console for execution status"
+    
+    return 0
+}
+
+# Create JSON batch file for add-canvas command and queue it via file watcher
+create_canvas_batch_file() {
+    local canvas_name="$1"
+    local scene_name="$2"
+    local render_mode="${3:-ScreenSpaceOverlay}"
+    local width="${4:-1920}"
+    local height="${5:-1080}"
+    local scale_mode="${6:-ScaleWithScreenSize}"
+    
+    # Create .vibe-commands directory if it doesn't exist
+    local command_dir=".vibe-commands"
+    mkdir -p "$command_dir"
+    
+    # Generate unique filename with timestamp
+    local timestamp=$(date +%Y%m%d-%H%M%S-%N)
+    local batch_file="$command_dir/add-canvas-$timestamp.json"
+    
+    # Create JSON batch file
+    cat > "$batch_file" << EOF
+{
+  "version": "1.0",
+  "description": "Auto-generated: Add canvas $canvas_name",
+  "commands": [
+    {
+      "action": "add-canvas",
+      "name": "$canvas_name",
+      "scene": "$scene_name",
+      "renderMode": "$render_mode",
+      "referenceWidth": $width,
+      "referenceHeight": $height,
+      "scaleMode": "$scale_mode"
+    }
+  ]
+}
+EOF
+    
+    echo "📁 Generated batch file: $(basename "$batch_file")"
+    echo "🔍 Unity will automatically process this file via file watcher"
+    echo "💡 Check Unity Console for execution status"
+    
+    return 0
+}
+
+# Execute Unity command via HTTP server
+execute_via_http() {
+    local method="$1"
+    shift
+    local args=("$@")
+    
+    # Convert Unity method to HTTP action
+    local action=""
+    local params="{}"
+    
+    case "$method" in
+        "UnityVibe.Editor.CLI.CreateSceneFromCommandLine")
+            action="create-scene"
+            params=$(cat <<EOF
+{
+  "name": "${args[0]}",
+  "path": "${args[1]}",
+  "type": "${args[2]:-DefaultGameObjects}",
+  "addToBuild": ${args[3]:-false}
+}
+EOF
+)
+            ;;
+        "UnityVibe.Editor.CLI.AddCanvasFromCommandLine")
+            action="add-canvas"
+            params=$(cat <<EOF
+{
+  "name": "${args[0]}",
+  "renderMode": "${args[1]:-ScreenSpaceOverlay}"
+}
+EOF
+)
+            ;;
+        *)
+            echo "⚠️  Method not supported via HTTP: $method"
+            return 1
+            ;;
+    esac
+    
+    # Create request JSON
+    local request_json=$(cat <<EOF
+{
+  "action": "$action",
+  "parameters": $params
+}
+EOF
+)
+    
+    # Send HTTP request
+    local response=$(curl -s -X POST \
+        -H "Content-Type: application/json" \
+        -d "$request_json" \
+        http://localhost:9876/execute 2>/dev/null)
+    
+    if [[ $? -eq 0 ]] && [[ -n "$response" ]]; then
+        # Parse response
+        local success=$(echo "$response" | grep -o '"success":[^,}]*' | cut -d: -f2)
+        local result=$(echo "$response" | grep -o '"result":"[^"]*"' | cut -d'"' -f4)
+        
+        if [[ "$success" == "true" ]]; then
+            echo "✅ $result"
+            return 0
+        else
+            echo "❌ $result"
+            return 1
+        fi
+    else
+        echo "⚠️  Failed to communicate with Unity HTTP server"
+        return 1
+    fi
+}
+
 # Session management functions
 SESSION_FILE=".vibeunity"
 
@@ -94,40 +248,86 @@ execute_unity_command() {
     
     PROJECT_PATH=$(get_project_path)
     
-    # Use a temporary file to capture all output
-    local temp_log=$(mktemp)
+    # Detect if Unity is running to choose appropriate execution method
+    local unity_running=false
     
-    "$UNITY_PATH" \
-        -batchmode \
-        -quit \
-        -projectPath "$PROJECT_PATH" \
-        -executeMethod "$method" \
-        $args \
-        -logFile "$temp_log" 2>&1
-    
-    local exit_code=$?
-    
-    # Always show UnityCLI messages
-    if [[ -f "$temp_log" ]]; then
-        grep -E "\[UnityCLI\]" "$temp_log" 2>/dev/null || true
-        
-        # If command failed, show additional error context
-        if [[ $exit_code -ne 0 ]]; then
-            echo ""
-            echo "🔍 Unity Error Details:"
-            echo "======================="
-            # Show errors and exceptions
-            grep -E "(Exception|Error|Failed|Cannot|Unable)" "$temp_log" | head -10 || echo "No specific error details found"
-            echo ""
-            echo "💡 Full Unity log saved to: $temp_log"
-            echo "   Use 'cat $temp_log' to view complete output"
-        else
-            # Clean up temp file on success
-            rm -f "$temp_log"
+    # Check for Unity processes
+    if command -v powershell.exe &> /dev/null; then
+        local unity_processes=$(powershell.exe "Get-Process | Where-Object {\$_.ProcessName -like '*Unity*' -and \$_.ProcessName -notlike '*Unity Hub*' -and \$_.ProcessName -notlike '*Unity.Licensing*'} | Measure-Object | Select-Object -ExpandProperty Count" 2>/dev/null | tr -d '\r' || echo "0")
+        if [[ "${unity_processes:-0}" -gt 0 ]]; then
+            unity_running=true
         fi
     fi
     
-    return $exit_code
+    # Also check for Unity lock file
+    if [[ -f "Temp/UnityLockfile" ]]; then
+        unity_running=true
+    fi
+    
+    if [[ "$unity_running" == "true" ]]; then
+        echo "🔄 Unity is running - using file watcher system"
+        
+        # Check if this is a supported command for automatic file watcher conversion
+        case "$method" in
+            "UnityVibe.Editor.CLI.CreateSceneFromCommandLine")
+                # Convert create-scene command to JSON batch file
+                create_scene_batch_file "$@"
+                return $?
+                ;;
+            "UnityVibe.Editor.CLI.AddCanvasFromCommandLine")
+                # Convert add-canvas command to JSON batch file
+                create_canvas_batch_file "$@"
+                return $?
+                ;;
+            *)
+                echo "💡 Command '$method' not yet supported for automatic file watcher conversion"
+                echo "   Supported commands: create-scene, add-canvas"
+                echo "   Place JSON batch files in .vibe-commands/ directory manually"
+                echo "   Unity will automatically process them via the file watcher"
+                echo ""
+                echo "🚫 Skipping command execution to avoid Unity instance conflicts"
+                return 1
+                ;;
+        esac
+    else
+        echo "🔄 Unity not running - executing in batch mode"
+        
+        # Use a temporary file to capture all output
+        local temp_log=$(mktemp)
+        
+        # Execute Unity in batch mode
+        "$UNITY_PATH" \
+            -batchmode \
+            -quit \
+            -projectPath "$PROJECT_PATH" \
+            -executeMethod "$method" \
+            $args \
+            -logFile "$temp_log" 2>&1
+        
+        local exit_code=$?
+        
+        # Process Unity logs
+        if [[ -f "$temp_log" ]]; then
+            grep -E "\[UnityCLI\]" "$temp_log" 2>/dev/null || true
+            
+            # If command failed, show additional error context
+            if [[ $exit_code -ne 0 ]]; then
+                echo ""
+                echo "🔍 Unity Error Details:"
+                echo "======================="
+                # Show errors and exceptions
+                grep -E "(Exception|Error|Failed|Cannot|Unable)" "$temp_log" | head -10 || echo "No specific error details found"
+                echo ""
+                echo "💡 Full Unity log saved to: $temp_log"
+                echo "   Use 'cat $temp_log' to view complete output"
+            else
+                # Clean up temp file on success
+                rm -f "$temp_log"
+            fi
+        fi
+        
+        return $exit_code
+    fi
 }
 
 # Show version information
@@ -389,45 +589,17 @@ cmd_create_scene() {
     echo "Project Path: $(get_project_path)"
     echo ""
     
-    # Execute Unity command using improved error handling
-    local temp_log=$(mktemp)
-    
-    "$UNITY_PATH" \
-        -batchmode \
-        -quit \
-        -projectPath "$(get_project_path)" \
-        -executeMethod UnityVibe.Editor.CLI.CreateSceneFromCommandLine \
-        "$scene_name" \
-        "$scene_path" \
-        "$scene_type" \
-        "$add_to_build" \
-        -logFile "$temp_log" 2>&1
-    
+    # Use centralized execute_unity_command function that handles Unity detection
+    execute_unity_command "UnityVibe.Editor.CLI.CreateSceneFromCommandLine" "$scene_name" "$scene_path" "$scene_type" "$add_to_build"
     local exit_code=$?
-    
-    # Show Unity CLI output
-    if [[ -f "$temp_log" ]]; then
-        grep -E "\[UnityCLI\]" "$temp_log" 2>/dev/null || true
-    fi
     
     if [ $exit_code -eq 0 ]; then
         echo ""
         echo "✅ Scene created successfully: $scene_path/$scene_name.unity"
-        rm -f "$temp_log"
     else
         echo ""
         echo "❌ Failed to create scene"
-        
-        # Show error details
-        if [[ -f "$temp_log" ]]; then
-            echo ""
-            echo "🔍 Unity Error Details:"
-            echo "======================="
-            grep -E "(Exception|Error|Failed|Cannot|Unable)" "$temp_log" | head -10 || echo "No specific error details found"
-            echo ""
-            echo "💡 Full Unity log saved to: $temp_log"
-            echo "   Use 'cat $temp_log' to view complete output"
-        fi
+        # Error details are now handled by execute_unity_command
         exit 1
     fi
 }
@@ -573,47 +745,16 @@ cmd_add_canvas() {
     echo "Project Path: $(get_project_path)"
     echo ""
     
-    # Execute Unity command using improved error handling
-    local temp_log=$(mktemp)
-    
-    "$UNITY_PATH" \
-        -batchmode \
-        -quit \
-        -projectPath "$(get_project_path)" \
-        -executeMethod UnityVibe.Editor.CLI.AddCanvasFromCommandLine \
-        "$canvas_name" \
-        "$scene_name" \
-        "$render_mode" \
-        "$width" \
-        "$height" \
-        "$scale_mode" \
-        -logFile "$temp_log" 2>&1
-    
+    # Use centralized execute_unity_command function that handles Unity detection
+    execute_unity_command "UnityVibe.Editor.CLI.AddCanvasFromCommandLine" "$canvas_name" "$scene_name" "$render_mode" "$width" "$height" "$scale_mode"
     local exit_code=$?
-    
-    # Show Unity CLI output
-    if [[ -f "$temp_log" ]]; then
-        grep -E "\[UnityCLI\]" "$temp_log" 2>/dev/null || true
-    fi
     
     if [ $exit_code -eq 0 ]; then
         echo ""
         echo "✅ Canvas added successfully: $canvas_name"
-        rm -f "$temp_log"
     else
         echo ""
         echo "❌ Failed to add canvas"
-        
-        # Show error details
-        if [[ -f "$temp_log" ]]; then
-            echo ""
-            echo "🔍 Unity Error Details:"
-            echo "======================="
-            grep -E "(Exception|Error|Failed|Cannot|Unable)" "$temp_log" | head -10 || echo "No specific error details found"
-            echo ""
-            echo "💡 Full Unity log saved to: $temp_log"
-            echo "   Use 'cat $temp_log' to view complete output"
-        fi
         exit 1
     fi
 }
@@ -707,21 +848,11 @@ cmd_add_panel() {
     echo "Project Path: $(get_project_path)"
     echo ""
     
-    # Execute Unity command
-    "$UNITY_PATH" \
-        -batchmode \
-        -quit \
-        -projectPath "$(get_project_path)" \
-        -executeMethod UnityVibe.Editor.CLI.AddPanelFromCommandLine \
-        "$panel_name" \
-        "$parent_name" \
-        "$scene_name" \
-        "$width" \
-        "$height" \
-        "$anchor_preset" \
-        -logFile - 2>/dev/null | grep -E "\[UnityCLI\]"
+    # Use centralized execute_unity_command function that handles Unity detection
+    execute_unity_command "UnityVibe.Editor.CLI.AddPanelFromCommandLine" "$panel_name" "$parent_name" "$scene_name" "$width" "$height" "$anchor_preset"
+    local exit_code=$?
     
-    if [ ${PIPESTATUS[0]} -eq 0 ]; then
+    if [ $exit_code -eq 0 ]; then
         echo ""
         echo "✅ Panel added successfully: $panel_name"
     else
@@ -817,21 +948,11 @@ cmd_add_button() {
     echo "Project Path: $(get_project_path)"
     echo ""
     
-    # Execute Unity command
-    "$UNITY_PATH" \
-        -batchmode \
-        -quit \
-        -projectPath "$(get_project_path)" \
-        -executeMethod UnityVibe.Editor.CLI.AddButtonFromCommandLine \
-        "$button_name" \
-        "$parent_name" \
-        "$button_text" \
-        "$width" \
-        "$height" \
-        "$anchor_preset" \
-        -logFile - 2>/dev/null | grep -E "\[UnityCLI\]"
+    # Use centralized execute_unity_command function that handles Unity detection
+    execute_unity_command "UnityVibe.Editor.CLI.AddButtonFromCommandLine" "$button_name" "$parent_name" "$button_text" "$width" "$height" "$anchor_preset"
+    local exit_code=$?
     
-    if [ ${PIPESTATUS[0]} -eq 0 ]; then
+    if [ $exit_code -eq 0 ]; then
         echo ""
         echo "✅ Button added successfully: $button_name"
     else
@@ -933,22 +1054,11 @@ cmd_add_text() {
     echo "Project Path: $(get_project_path)"
     echo ""
     
-    # Execute Unity command
-    "$UNITY_PATH" \
-        -batchmode \
-        -quit \
-        -projectPath "$(get_project_path)" \
-        -executeMethod UnityVibe.Editor.CLI.AddTextFromCommandLine \
-        "$text_name" \
-        "$parent_name" \
-        "$text_content" \
-        "$font_size" \
-        "$width" \
-        "$height" \
-        "$anchor_preset" \
-        -logFile - 2>/dev/null | grep -E "\[UnityCLI\]"
+    # Use centralized execute_unity_command function that handles Unity detection
+    execute_unity_command "UnityVibe.Editor.CLI.AddTextFromCommandLine" "$text_name" "$parent_name" "$text_content" "$font_size" "$width" "$height" "$anchor_preset"
+    local exit_code=$?
     
-    if [ ${PIPESTATUS[0]} -eq 0 ]; then
+    if [ $exit_code -eq 0 ]; then
         echo ""
         echo "✅ Text added successfully: $text_name"
     else

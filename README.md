@@ -20,6 +20,8 @@ A powerful Command Line Interface tool for Unity development workflow automation
 - **Cross-Platform**: Works on Windows, macOS, and Linux
 - **No External Dependencies**: Uses only Unity's native APIs
 - **Detailed Error Reporting**: Machine-readable output with comprehensive diagnostics
+- **Claude Code Integration**: Designed for AI-assisted Unity development workflows
+- **Automatic File Watcher**: Execute commands even while Unity Editor is running
 
 ## 📦 Installation
 
@@ -381,6 +383,42 @@ Enable detailed logging by running:
 CLI.DebugUnityCLI(); // Shows configuration and available options
 CLI.TestUnityCLI();  // Tests CLI functionality
 ```
+
+## 🤖 Claude Code Integration
+
+Unity Vibe CLI is designed to work seamlessly with Claude Code and other AI coding assistants. The automatic file watcher system ensures commands work even when Unity Editor is running.
+
+### Why Unity Vibe CLI + Claude Code?
+
+- **No Unity Restart Required**: Commands execute while Unity is running
+- **Automatic Adaptation**: CLI detects Unity state and chooses the best execution method
+- **AI-Friendly Output**: Clear, parseable responses perfect for AI interpretation
+- **Complex UI Generation**: Build entire UI hierarchies with simple commands
+
+### Claude Code Quick Start
+
+```bash
+# Works whether Unity is open or closed!
+vibe-unity create-scene MenuScene Assets/Scenes --type 2D
+vibe-unity add-canvas MainCanvas --mode ScreenSpaceOverlay
+vibe-unity add-panel MenuPanel MainCanvas --width 600 --height 400
+vibe-unity add-button PlayBtn MenuPanel --text "Play Game"
+```
+
+### How It Works with Unity Running
+
+1. Claude Code executes a vibe-unity command
+2. CLI detects Unity is running with the project open
+3. Command is converted to JSON and placed in `.vibe-commands/`
+4. Unity's file watcher immediately processes the command
+5. Results are reported back to Claude Code
+
+No manual intervention required!
+
+### Additional Resources
+
+- [Claude Code Integration Guide](CLAUDE-CODE-GUIDE.md) - Detailed guide for AI-assisted development
+- [Execution Experiments](EXECUTION-EXPERIMENTS.md) - Technical details on how we solved Unity's single-instance limitation
 
 ## 🤝 Contributing
 

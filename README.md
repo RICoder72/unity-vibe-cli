@@ -73,7 +73,33 @@ vibe-unity list-types
 
 ## 🛠️ Quick Start
 
-### Basic Usage (C# API)
+### Method 1: Command Line Interface (Primary - for Claude Code & WSL)
+
+The package automatically sets up CLI scripts in your project root when imported:
+
+```bash
+# Create a scene and add a canvas (the main use case)
+./vibe-unity create-scene MyScene Assets/Scenes --type DefaultGameObjects
+./vibe-unity add-canvas MainCanvas --mode ScreenSpaceOverlay --width 1920 --height 1080
+
+# List available scene types
+./vibe-unity list-types
+
+# Add UI elements
+./vibe-unity add-panel MenuPanel --parent MainCanvas --width 300 --height 400
+./vibe-unity add-button PlayButton --parent MenuPanel --text "Play Game"
+./vibe-unity add-text HeaderText --parent MenuPanel --text "Welcome!" --size 24
+
+# Show help
+./vibe-unity --help
+./vibe-unity help create-scene
+```
+
+**Primary use case:** Claude Code integration, WSL development, automation scripts, and CI/CD pipelines.
+
+**Important:** Unity Editor must be closed before running CLI commands (Unity batch mode limitation).
+
+### Method 2: C# API (For Unity Editor scripts)
 
 ```csharp
 using UnityVibe.Editor;
@@ -88,41 +114,22 @@ CLI.AddCanvas("MainCanvas", "ScreenSpaceOverlay", 1920, 1080, "ScaleWithScreenSi
 CLI.ListSceneTypes();
 ```
 
-### Command Line Usage
+**Best for:** Unity developers who want to use these tools in Editor scripts or custom Unity windows.
 
-#### Unified CLI Interface (Recommended)
+### Method 3: Unity Menu Integration
+
+Access tools via Unity's menu system:
+- **Tools > Unity Vibe CLI > Debug Unity CLI** - Show current configuration
+- **Tools > Unity Vibe CLI > Test Unity CLI** - Test CLI functionality
+
+### Method 4: Direct Unity Batch Mode (Advanced)
+
 ```bash
-# Install CLI for WSL (run once per project)
-./Scripts/install-vibe-unity
-
-# Create a new scene
-vibe-unity create-scene MyScene Assets/Scenes
-vibe-unity create-scene GameScene Assets/Scenes/Game --type 3D --build
-
-# Add a canvas
-vibe-unity add-canvas MainCanvas --mode ScreenSpaceOverlay --width 1920 --height 1080
-
-# List available scene types
-vibe-unity list-types
-
-# Show help
-vibe-unity --help
-vibe-unity help create-scene
-```
-
-#### Direct Script Usage
-```bash
-# Run from project root without installation
-./Scripts/vibe-unity create-scene MyScene Assets/Scenes
-./Scripts/vibe-unity list-types
-./Scripts/vibe-unity --help
-```
-
-#### Legacy Unity Command Line
-```bash
-# Direct Unity batch mode (not recommended)
+# Advanced usage - call Unity directly  
 Unity -batchmode -quit -projectPath "path/to/project" -executeMethod UnityVibe.Editor.CLI.CreateSceneFromCommandLine MyScene Assets/Scenes DefaultGameObjects true
 ```
+
+**Best for:** Advanced automation and build systems that need direct Unity control.
 
 ## 📚 Documentation
 

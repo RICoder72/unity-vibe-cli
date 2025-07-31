@@ -1,0 +1,7 @@
+# Unity Vibe CLI Session
+# Created: Wed Jul 30 22:02:00 EDT 2025
+scene=ParentTestScene
+canvas_mode=ScreenSpaceOverlay
+resolution=1920x1080
+created=Wed Jul 30 22:02:00 EDT 2025
+parent=MainMenuCanvas

@@ -798,14 +798,44 @@ namespace UnityVibe.Editor
         }
         
         /// <summary>
-        /// Loads the target scene if specified, otherwise uses current scene
+        /// Loads the target scene if specified, otherwise uses current scene or smart detection
         /// </summary>
         private static bool LoadTargetScene(string sceneName)
         {
             if (string.IsNullOrEmpty(sceneName))
             {
-                Debug.Log($"[UnityCLI] Using current active scene: {SceneManager.GetActiveScene().name}");
-                return true;
+                // Try current active scene first
+                Scene currentScene = SceneManager.GetActiveScene();
+                if (currentScene.IsValid() && !string.IsNullOrEmpty(currentScene.path))
+                {
+                    Debug.Log($"[UnityCLI] Using current active scene: {currentScene.name}");
+                    return true;
+                }
+                
+                // Fallback: Smart scene detection - use most recently modified scene
+                string smartScene = GetMostRecentScene();
+                if (!string.IsNullOrEmpty(smartScene))
+                {
+                    Debug.Log($"[UnityCLI] ⚡ Smart Detection: Using most recent scene: {System.IO.Path.GetFileNameWithoutExtension(smartScene)}");
+                    try
+                    {
+                        Scene targetScene = EditorSceneManager.OpenScene(smartScene);
+                        if (targetScene.IsValid())
+                        {
+                            Debug.Log($"[UnityCLI] ✅ Loaded detected scene: {targetScene.name}");
+                            return true;
+                        }
+                    }
+                    catch (System.Exception e)
+                    {
+                        Debug.LogWarning($"[UnityCLI] Failed to load detected scene: {e.Message}");
+                    }
+                }
+                
+                Debug.LogError($"[UnityCLI] ❌ ERROR: No valid scene available");
+                Debug.LogError($"[UnityCLI]    └─ No active scene and no scenes found in project");
+                Debug.LogError($"[UnityCLI]    └─ Available scenes: {ListAvailableScenes()}");
+                return false;
             }
             
             // Try to find scene by name
@@ -892,6 +922,55 @@ namespace UnityVibe.Editor
             }
             
             return string.Join(", ", sceneNames.Take(10)) + (sceneNames.Count > 10 ? "..." : "");
+        }
+        
+        /// <summary>
+        /// Gets the most recently modified scene in the project (for smart scene detection)
+        /// </summary>
+        private static string GetMostRecentScene()
+        {
+            try
+            {
+                string[] sceneGuids = AssetDatabase.FindAssets("t:Scene");
+                if (sceneGuids.Length == 0)
+                {
+                    Debug.Log("[UnityCLI] Smart Detection: No scenes found in project");
+                    return null;
+                }
+                
+                string mostRecentPath = null;
+                System.DateTime mostRecentTime = System.DateTime.MinValue;
+                
+                foreach (string guid in sceneGuids)
+                {
+                    string path = AssetDatabase.GUIDToAssetPath(guid);
+                    if (!string.IsNullOrEmpty(path) && System.IO.File.Exists(path))
+                    {
+                        System.DateTime fileTime = System.IO.File.GetLastWriteTime(path);
+                        if (fileTime > mostRecentTime)
+                        {
+                            mostRecentTime = fileTime;
+                            mostRecentPath = path;
+                        }
+                    }
+                }
+                
+                if (!string.IsNullOrEmpty(mostRecentPath))
+                {
+                    Debug.Log($"[UnityCLI] Smart Detection: Found most recent scene: {mostRecentPath} (modified: {mostRecentTime})");
+                }
+                else
+                {
+                    Debug.Log("[UnityCLI] Smart Detection: No valid scene files found");
+                }
+                
+                return mostRecentPath;
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning($"[UnityCLI] Error in smart scene detection: {e.Message}");
+                return null;
+            }
         }
         
         /// <summary>
@@ -1298,6 +1377,11 @@ namespace UnityVibe.Editor
             // Test scene type listing
             ListSceneTypes();
             
+            // Test smart scene detection
+            Debug.Log("[UnityCLI Test] Testing smart scene detection...");
+            string smartScene = GetMostRecentScene();
+            Debug.Log($"[UnityCLI Test] Smart scene result: {smartScene ?? "null"}");
+            
             // Test canvas creation in current scene
             bool canvasSuccess = AddCanvas("TestCanvas", null, "ScreenSpaceOverlay", 1920, 1080, "ScaleWithScreenSize");
             if (canvasSuccess)
@@ -1310,6 +1394,27 @@ namespace UnityVibe.Editor
             }
             
             Debug.Log("[UnityCLI Test] Test completed. Check console for detailed results.");
+        }
+        
+        /// <summary>
+        /// Test smart scene detection only
+        /// </summary>
+        [MenuItem("Tools/Unity Vibe CLI/Test Smart Scene Detection", priority = 402)]
+        private static void TestSmartSceneDetection()
+        {
+            Debug.Log("[UnityCLI Test] Testing smart scene detection...");
+            
+            string smartScene = GetMostRecentScene();
+            if (!string.IsNullOrEmpty(smartScene))
+            {
+                Debug.Log($"[UnityCLI Test] ✅ Smart detection found: {smartScene}");
+                Debug.Log($"[UnityCLI Test]    Scene name: {System.IO.Path.GetFileNameWithoutExtension(smartScene)}");
+                Debug.Log($"[UnityCLI Test]    Last modified: {System.IO.File.GetLastWriteTime(smartScene)}");
+            }
+            else
+            {
+                Debug.LogWarning("[UnityCLI Test] ❌ Smart detection returned null");
+            }
         }
         
         #endregion

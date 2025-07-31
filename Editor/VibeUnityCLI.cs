@@ -329,6 +329,9 @@ namespace VibeUnity.Editor
                 canvas.renderMode = ParseRenderMode(renderMode);
                 canvas.sortingOrder = sortingOrder;
                 
+                // Set vertex color always in gamma space for UI consistency
+                canvas.vertexColorAlwaysInGammaSpace = true;
+                
                 // Configure canvas scaler
                 scaler.uiScaleMode = ParseScaleMode(scaleMode);
                 scaler.referenceResolution = new Vector2(referenceWidth, referenceHeight);
@@ -353,6 +356,7 @@ namespace VibeUnity.Editor
                 Debug.Log($"[VibeUnityCLI]    └─ Resolution: {referenceWidth}x{referenceHeight}");
                 Debug.Log($"[VibeUnityCLI]    └─ Scale Mode: {scaleMode}");
                 Debug.Log($"[VibeUnityCLI]    └─ Sorting Order: {sortingOrder}");
+                Debug.Log($"[VibeUnityCLI]    └─ Vertex Color: Always in Gamma Space");
                 Debug.Log($"[VibeUnityCLI]    └─ Components: Canvas, CanvasScaler, GraphicRaycaster");
                 Debug.Log($"[VibeUnityCLI]    └─ Hierarchy: {GetGameObjectPath(canvasGO)}");
                 return true;

@@ -1,0 +1,18 @@
+{
+  "version": "1.0", 
+  "description": "Debug test - scene and canvas only",
+  "commands": [
+    {
+      "action": "create-scene",
+      "name": "DebugScene",
+      "path": "Assets/Scenes",
+      "type": "DefaultGameObjects"
+    },
+    {
+      "action": "add-canvas",
+      "name": "DebugCanvas", 
+      "scene": "DebugScene",
+      "renderMode": "ScreenSpaceOverlay"
+    }
+  ]
+}

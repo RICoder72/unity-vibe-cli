@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./Scripts/vibe-unity create-scene:*)",
+      "Bash(ls:*)",
+      "Bash(dos2unix:*)",
+      "Bash(sed:*)",
+      "Bash(./Scripts/vibe-unity:*)",
+      "Bash(find:*)",
+      "Bash(powershell.exe:*)",
+      "Bash(\"/mnt/c/Program Files/Unity/Hub/Editor/6000.1.13f1/Editor/Unity.exe\" -batchmode -quit -projectPath \"C:/repos/unity-vibe-cli\" -executeMethod UnityVibe.Editor.CLI.ListSceneTypesFromCommandLine -logFile -)",
+      "Bash(\"/mnt/c/Program Files/Unity/Hub/Editor/6000.1.13f1/Editor/Unity.exe\" -batchmode -quit -projectPath \"C:/repos/unity-vibe-cli\" -executeMethod UnityVibe.Editor.CLI.AddPanelFromCommandLine \"MenuPanel\" \"\" \"300\" \"400\" \"MiddleCenter\" -logFile -)",
+      "Bash(\"/mnt/c/Program Files/Unity/Hub/Editor/6000.1.13f1/Editor/Unity.exe\" -batchmode -quit -projectPath \"C:/repos/unity-vibe-cli\" -executeMethod UnityVibe.Editor.CLI.AddCanvasFromCommandLine \"MainCanvas\" \"UITestScene\" \"ScreenSpaceOverlay\" \"1920\" \"1080\" \"ScaleWithScreenSize\" -logFile -)",
+      "Bash(git add:*)",
+      "Bash(chmod:*)",
+      "Bash(./vibe-unity create-scene:*)",
+      "Bash(./vibe-unity add-canvas:*)",
+      "Bash(./Scripts/install-vibe-unity:*)",
+      "Bash(cat:*)",
+      "Bash(./vibe-unity list-types:*)",
+      "Bash(./vibe-unity start-session --scene SessionTestScene --canvas-mode ScreenSpaceOverlay --resolution 1280x720)",
+      "Bash(./vibe-unity show-session:*)",
+      "Bash(./vibe-unity clear-session)",
+      "Bash(./vibe-unity:*)",
+      "Bash(rm:*)",
+      "Bash(git rm:*)"
+    ],
+    "deny": []
+  }
+}

@@ -125,7 +125,21 @@ namespace VibeUnity.Editor
     {
         public string version = "1.0";
         public string description = "";
+        public SceneConfig scene;
         public BatchCommand[] commands;
+    }
+    
+    /// <summary>
+    /// Scene configuration for batch command files
+    /// </summary>
+    [System.Serializable]
+    public class SceneConfig
+    {
+        public string name;              // Scene name (required)
+        public bool create = false;      // Whether to create the scene if it doesn't exist
+        public string path = "Assets/Scenes";  // Path where to create the scene
+        public string type = "DefaultGameObjects";  // Scene type if creating
+        public bool addToBuild = false;  // Whether to add to build settings if creating
     }
     
     /// <summary>
@@ -157,6 +171,16 @@ namespace VibeUnity.Editor
         public float height;
         public string anchor;
         public float[] position;
+        
+        // 3D GameObject fields
+        public float[] rotation;
+        public float[] scale;
+        
+        // ScrollView specific fields
+        public bool horizontal = true;
+        public bool vertical = true;
+        public string scrollbarVisibility = "AutoHideAndExpandViewport";
+        public float scrollSensitivity = 1.0f;
         
         // Text/Button specific fields
         public string text;
@@ -592,6 +616,130 @@ namespace VibeUnity.Editor
             catch (System.Exception e)
             {
                 Debug.LogError($"[VibeUnityCLI] Exception creating text: {e.Message}");
+                return false;
+            }
+        }
+        
+        /// <summary>
+        /// Adds a ScrollView UI element to a scene
+        /// </summary>
+        /// <param name="scrollViewName">Name for the ScrollView GameObject</param>
+        /// <param name="parentName">Parent GameObject name (optional)</param>
+        /// <param name="sceneName">Target scene name (optional)</param>
+        /// <param name="width">ScrollView width in pixels</param>
+        /// <param name="height">ScrollView height in pixels</param>
+        /// <param name="anchorPreset">Anchor preset name</param>
+        /// <param name="horizontal">Enable horizontal scrolling</param>
+        /// <param name="vertical">Enable vertical scrolling</param>
+        /// <param name="scrollbarVisibility">Scrollbar visibility mode</param>
+        /// <param name="scrollSensitivity">Scroll sensitivity value</param>
+        /// <returns>True if ScrollView was created successfully</returns>
+        public static bool AddScrollView(
+            string scrollViewName,
+            string parentName = null,
+            string sceneName = null,
+            float width = 300f,
+            float height = 200f,
+            string anchorPreset = "MiddleCenter",
+            bool horizontal = true,
+            bool vertical = true,
+            string scrollbarVisibility = "AutoHideAndExpandViewport",
+            float scrollSensitivity = 1.0f)
+        {
+            try
+            {
+                // Load target scene if specified
+                if (!LoadTargetScene(sceneName))
+                {
+                    return false;
+                }
+                
+                // Find parent GameObject
+                GameObject parent = FindUIParent(parentName);
+                if (parent == null)
+                {
+                    Debug.LogError($"[VibeUnityCLI] Could not find suitable parent for ScrollView '{scrollViewName}'");
+                    return false;
+                }
+                
+                // Create ScrollView GameObject
+                GameObject scrollViewGO = new GameObject(scrollViewName);
+                scrollViewGO.transform.SetParent(parent.transform, false);
+                
+                // Add and configure RectTransform
+                RectTransform scrollViewRect = scrollViewGO.AddComponent<RectTransform>();
+                SetupRectTransform(scrollViewRect, width, height, anchorPreset);
+                
+                // Add Image component for background
+                Image scrollViewImage = scrollViewGO.AddComponent<Image>();
+                scrollViewImage.color = new Color(1f, 1f, 1f, 0.392f);
+                
+                // Add ScrollRect component
+                ScrollRect scrollRect = scrollViewGO.AddComponent<ScrollRect>();
+                scrollRect.horizontal = horizontal;
+                scrollRect.vertical = vertical;
+                scrollRect.scrollSensitivity = scrollSensitivity;
+                
+                // Parse scrollbar visibility
+                switch (scrollbarVisibility.ToLower())
+                {
+                    case "autohideandexpandviewport":
+                        scrollRect.horizontalScrollbarVisibility = ScrollRect.ScrollbarVisibility.AutoHideAndExpandViewport;
+                        scrollRect.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.AutoHideAndExpandViewport;
+                        break;
+                    case "autohide":
+                        scrollRect.horizontalScrollbarVisibility = ScrollRect.ScrollbarVisibility.AutoHide;
+                        scrollRect.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.AutoHide;
+                        break;
+                    case "permanent":
+                        scrollRect.horizontalScrollbarVisibility = ScrollRect.ScrollbarVisibility.Permanent;
+                        scrollRect.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.Permanent;
+                        break;
+                }
+                
+                // Create Viewport
+                GameObject viewport = new GameObject("Viewport");
+                viewport.transform.SetParent(scrollViewGO.transform, false);
+                
+                RectTransform viewportRect = viewport.AddComponent<RectTransform>();
+                viewportRect.anchorMin = Vector2.zero;
+                viewportRect.anchorMax = Vector2.one;
+                viewportRect.sizeDelta = Vector2.zero;
+                viewportRect.offsetMin = Vector2.zero;
+                viewportRect.offsetMax = Vector2.zero;
+                
+                Image viewportImage = viewport.AddComponent<Image>();
+                viewportImage.color = new Color(1f, 1f, 1f, 0.392f);
+                
+                Mask viewportMask = viewport.AddComponent<Mask>();
+                viewportMask.showMaskGraphic = false;
+                
+                // Create Content
+                GameObject content = new GameObject("Content");
+                content.transform.SetParent(viewport.transform, false);
+                
+                RectTransform contentRect = content.AddComponent<RectTransform>();
+                contentRect.anchorMin = Vector2.up;
+                contentRect.anchorMax = Vector2.one;
+                contentRect.sizeDelta = new Vector2(0, 300);
+                contentRect.pivot = Vector2.up;
+                
+                // Assign references to ScrollRect
+                scrollRect.viewport = viewportRect;
+                scrollRect.content = contentRect;
+                
+                Debug.Log($"[VibeUnityCLI] ✅ ScrollView created: {scrollViewName}");
+                Debug.Log($"[VibeUnityCLI]    └─ Parent: {parent.name}");
+                Debug.Log($"[VibeUnityCLI]    └─ Size: {width}x{height}");
+                Debug.Log($"[VibeUnityCLI]    └─ Horizontal: {horizontal}");
+                Debug.Log($"[VibeUnityCLI]    └─ Vertical: {vertical}");
+                Debug.Log($"[VibeUnityCLI]    └─ Anchor: {anchorPreset}");
+                Debug.Log($"[VibeUnityCLI]    └─ Hierarchy: {GetGameObjectPath(scrollViewGO)}");
+                return true;
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"[VibeUnityCLI] Exception creating scrollview: {e.Message}");
                 return false;
             }
         }
@@ -1131,11 +1279,16 @@ namespace VibeUnity.Editor
         #region Command Line Interface Entry Points
         
         /// <summary>
-        /// Command line entry point for scene creation
+        /// Command line entry point for scene creation - DISABLED
         /// Usage: Unity -batchmode -quit -executeMethod VibeUnity.Editor.CLI.CreateSceneFromCommandLine -projectPath "path/to/project" scene_name scene_path scene_type
         /// </summary>
         public static void CreateSceneFromCommandLine()
         {
+            // CLI commands disabled - functionality commented out
+            Debug.LogWarning("[VibeUnityCLI] CLI commands are disabled. Use internal API methods instead.");
+            return;
+            
+            /*
             string[] args = System.Environment.GetCommandLineArgs();
             
             // Find our arguments after -executeMethod
@@ -1165,14 +1318,20 @@ namespace VibeUnity.Editor
                 Debug.LogError($"[VibeUnityCLI] ❌ Failed to create scene");
                 UnityEditor.EditorApplication.Exit(1);
             }
+            */
         }
         
         /// <summary>
-        /// Command line entry point for canvas creation
+        /// Command line entry point for canvas creation - DISABLED
         /// Usage: Unity -batchmode -quit -executeMethod VibeUnity.Editor.CLI.AddCanvasFromCommandLine canvas_name [scene_name] render_mode [width] [height] [scale_mode]
         /// </summary>
         public static void AddCanvasFromCommandLine()
         {
+            // CLI commands disabled - functionality commented out
+            Debug.LogWarning("[VibeUnityCLI] CLI commands are disabled. Use internal API methods instead.");
+            return;
+            
+            /*
             string[] args = System.Environment.GetCommandLineArgs();
             
             int executeMethodIndex = System.Array.FindIndex(args, arg => arg == "-executeMethod");
@@ -1209,178 +1368,68 @@ namespace VibeUnity.Editor
                 Debug.LogError($"[VibeUnityCLI] ❌ Failed to add canvas");
                 UnityEditor.EditorApplication.Exit(1);
             }
+            */
         }
         
         /// <summary>
-        /// Command line entry point for listing scene types
+        /// Command line entry point for listing scene types - DISABLED
         /// Usage: Unity -batchmode -quit -executeMethod VibeUnity.Editor.CLI.ListSceneTypesFromCommandLine
         /// </summary>
         public static void ListSceneTypesFromCommandLine()
         {
+            // CLI commands disabled - functionality commented out
+            Debug.LogWarning("[VibeUnityCLI] CLI commands are disabled. Use internal API methods instead.");
+            return;
+            
+            /*
             Debug.Log("[VibeUnityCLI] === Available Scene Types ===");
             ListSceneTypes();
             Debug.Log("[VibeUnityCLI] ===========================");
+            */
         }
         
         /// <summary>
-        /// Command line entry point for adding UI panels
+        /// Command line entry point for adding UI panels - DISABLED
         /// Usage: Unity -batchmode -quit -executeMethod VibeUnity.Editor.CLI.AddPanelFromCommandLine panel_name [parent_name] [scene_name] [width] [height] [anchor_preset]
         /// </summary>
         public static void AddPanelFromCommandLine()
         {
-            string[] args = System.Environment.GetCommandLineArgs();
-            
-            int executeMethodIndex = System.Array.FindIndex(args, arg => arg == "-executeMethod");
-            if (executeMethodIndex == -1 || executeMethodIndex + 2 >= args.Length)
-            {
-                Debug.LogError("[VibeUnityCLI] Invalid arguments. Usage: panel_name [parent_name] [scene_name] [width] [height] [anchor_preset]");
-                return;
-            }
-            
-            string panelName = args[executeMethodIndex + 2];
-            string parentName = args.Length > executeMethodIndex + 3 ? args[executeMethodIndex + 3] : null;
-            string sceneName = args.Length > executeMethodIndex + 4 ? args[executeMethodIndex + 4] : null;
-            float width = args.Length > executeMethodIndex + 5 ? float.Parse(args[executeMethodIndex + 5]) : 200f;
-            float height = args.Length > executeMethodIndex + 6 ? float.Parse(args[executeMethodIndex + 6]) : 200f;
-            string anchorPreset = args.Length > executeMethodIndex + 7 ? args[executeMethodIndex + 7] : "MiddleCenter";
-            
-            // Handle empty string as null for optional parameters
-            if (string.IsNullOrEmpty(parentName)) parentName = null;
-            if (string.IsNullOrEmpty(sceneName)) sceneName = null;
-            
-            Debug.Log($"[VibeUnityCLI] Adding panel: {panelName} under {parentName ?? "default canvas"} in scene {sceneName ?? "current"}");
-            
-            bool success = AddPanel(panelName, parentName, sceneName, width, height, anchorPreset);
-            
-            if (success)
-            {
-                Debug.Log($"[VibeUnityCLI] ✅ Successfully added panel: {panelName}");
-                UnityEditor.SceneManagement.EditorSceneManager.SaveOpenScenes();
-            }
-            else
-            {
-                Debug.LogError($"[VibeUnityCLI] ❌ Failed to add panel");
-                UnityEditor.EditorApplication.Exit(1);
-            }
+            // CLI commands disabled - functionality commented out
+            Debug.LogWarning("[VibeUnityCLI] CLI commands are disabled. Use internal API methods instead.");
+            return;
         }
         
         /// <summary>
-        /// Command line entry point for adding UI buttons
+        /// Command line entry point for adding UI buttons - DISABLED
         /// Usage: Unity -batchmode -quit -executeMethod VibeUnity.Editor.CLI.AddButtonFromCommandLine button_name [parent_name] [scene_name] [button_text] [width] [height] [anchor_preset]
         /// </summary>
         public static void AddButtonFromCommandLine()
         {
-            string[] args = System.Environment.GetCommandLineArgs();
-            
-            int executeMethodIndex = System.Array.FindIndex(args, arg => arg == "-executeMethod");
-            if (executeMethodIndex == -1 || executeMethodIndex + 2 >= args.Length)
-            {
-                Debug.LogError("[VibeUnityCLI] Invalid arguments. Usage: button_name [parent_name] [scene_name] [button_text] [width] [height] [anchor_preset]");
-                return;
-            }
-            
-            string buttonName = args[executeMethodIndex + 2];
-            string parentName = args.Length > executeMethodIndex + 3 ? args[executeMethodIndex + 3] : null;
-            string sceneName = args.Length > executeMethodIndex + 4 ? args[executeMethodIndex + 4] : null;
-            string buttonText = args.Length > executeMethodIndex + 5 ? args[executeMethodIndex + 5] : "Button";
-            float width = args.Length > executeMethodIndex + 6 ? float.Parse(args[executeMethodIndex + 6]) : 160f;
-            float height = args.Length > executeMethodIndex + 7 ? float.Parse(args[executeMethodIndex + 7]) : 30f;
-            string anchorPreset = args.Length > executeMethodIndex + 8 ? args[executeMethodIndex + 8] : "MiddleCenter";
-            
-            // Handle empty string as null for optional parameters
-            if (string.IsNullOrEmpty(parentName)) parentName = null;
-            if (string.IsNullOrEmpty(sceneName)) sceneName = null;
-            
-            Debug.Log($"[VibeUnityCLI] Adding button: {buttonName} under {parentName ?? "default canvas"} in scene {sceneName ?? "current"}");
-            
-            bool success = AddButton(buttonName, parentName, sceneName, buttonText, width, height, anchorPreset);
-            
-            if (success)
-            {
-                Debug.Log($"[VibeUnityCLI] ✅ Successfully added button: {buttonName}");
-                UnityEditor.SceneManagement.EditorSceneManager.SaveOpenScenes();
-            }
-            else
-            {
-                Debug.LogError($"[VibeUnityCLI] ❌ Failed to add button");
-                UnityEditor.EditorApplication.Exit(1);
-            }
+            // CLI commands disabled - functionality commented out
+            Debug.LogWarning("[VibeUnityCLI] CLI commands are disabled. Use internal API methods instead.");
+            return;
         }
         
         /// <summary>
-        /// Command line entry point for adding UI text
+        /// Command line entry point for adding UI text - DISABLED
         /// Usage: Unity -batchmode -quit -executeMethod VibeUnity.Editor.CLI.AddTextFromCommandLine text_name [parent_name] [scene_name] [text_content] [font_size] [width] [height] [anchor_preset]
         /// </summary>
         public static void AddTextFromCommandLine()
         {
-            string[] args = System.Environment.GetCommandLineArgs();
-            
-            int executeMethodIndex = System.Array.FindIndex(args, arg => arg == "-executeMethod");
-            if (executeMethodIndex == -1 || executeMethodIndex + 2 >= args.Length)
-            {
-                Debug.LogError("[VibeUnityCLI] Invalid arguments. Usage: text_name [parent_name] [scene_name] [text_content] [font_size] [width] [height] [anchor_preset]");
-                return;
-            }
-            
-            string textName = args[executeMethodIndex + 2];
-            string parentName = args.Length > executeMethodIndex + 3 ? args[executeMethodIndex + 3] : null;
-            string sceneName = args.Length > executeMethodIndex + 4 ? args[executeMethodIndex + 4] : null;
-            string textContent = args.Length > executeMethodIndex + 5 ? args[executeMethodIndex + 5] : "New Text";
-            int fontSize = args.Length > executeMethodIndex + 6 ? int.Parse(args[executeMethodIndex + 6]) : 14;
-            float width = args.Length > executeMethodIndex + 7 ? float.Parse(args[executeMethodIndex + 7]) : 200f;
-            float height = args.Length > executeMethodIndex + 8 ? float.Parse(args[executeMethodIndex + 8]) : 50f;
-            string anchorPreset = args.Length > executeMethodIndex + 9 ? args[executeMethodIndex + 9] : "MiddleCenter";
-            
-            // Handle empty string as null for optional parameters
-            if (string.IsNullOrEmpty(parentName)) parentName = null;
-            if (string.IsNullOrEmpty(sceneName)) sceneName = null;
-            
-            Debug.Log($"[VibeUnityCLI] Adding text: {textName} under {parentName ?? "default canvas"} in scene {sceneName ?? "current"}");
-            
-            bool success = AddText(textName, parentName, sceneName, textContent, fontSize, width, height, anchorPreset);
-            
-            if (success)
-            {
-                Debug.Log($"[VibeUnityCLI] ✅ Successfully added text: {textName}");
-                UnityEditor.SceneManagement.EditorSceneManager.SaveOpenScenes();
-            }
-            else
-            {
-                Debug.LogError($"[VibeUnityCLI] ❌ Failed to add text");
-                UnityEditor.EditorApplication.Exit(1);
-            }
+            // CLI commands disabled - functionality commented out
+            Debug.LogWarning("[VibeUnityCLI] CLI commands are disabled. Use internal API methods instead.");
+            return;
         }
         
         /// <summary>
-        /// Command line entry point for batch file execution
+        /// Command line entry point for batch file execution - DISABLED
         /// Usage: Unity -batchmode -quit -executeMethod VibeUnity.Editor.CLI.ExecuteBatchFromCommandLine json_file_path
         /// </summary>
         public static void ExecuteBatchFromCommandLine()
         {
-            string[] args = System.Environment.GetCommandLineArgs();
-            
-            int executeMethodIndex = System.Array.FindIndex(args, arg => arg == "-executeMethod");
-            if (executeMethodIndex == -1 || executeMethodIndex + 2 >= args.Length)
-            {
-                Debug.LogError("[VibeUnityCLI] Invalid arguments. Usage: json_file_path");
-                return;
-            }
-            
-            string jsonFilePath = args[executeMethodIndex + 2];
-            
-            Debug.Log($"[VibeUnityCLI] Executing batch file: {jsonFilePath}");
-            
-            bool success = ExecuteBatchFile(jsonFilePath);
-            
-            if (success)
-            {
-                Debug.Log($"[VibeUnityCLI] ✅ Batch file executed successfully");
-            }
-            else
-            {
-                Debug.LogError($"[VibeUnityCLI] ❌ Failed to execute batch file");
-                UnityEditor.EditorApplication.Exit(1);
-            }
+            // CLI commands disabled - functionality commented out
+            Debug.LogWarning("[VibeUnityCLI] CLI commands are disabled. Use internal API methods instead.");
+            return;
         }
         
         /// <summary>
@@ -1452,6 +1501,130 @@ namespace VibeUnity.Editor
         }
         
         /// <summary>
+        /// Executes commands from a JSON batch file with detailed logging
+        /// </summary>
+        /// <param name="jsonFilePath">Path to the JSON batch file</param>
+        /// <param name="logCapture">StringBuilder to capture log output</param>
+        /// <returns>True if all commands executed successfully</returns>
+        private static bool ExecuteBatchFileWithLogging(string jsonFilePath, System.Text.StringBuilder logCapture)
+        {
+            try
+            {
+                if (!System.IO.File.Exists(jsonFilePath))
+                {
+                    string error = $"Batch file not found: {jsonFilePath}";
+                    logCapture.AppendLine($"ERROR: {error}");
+                    Debug.LogError($"[VibeUnityCLI] {error}");
+                    return false;
+                }
+                
+                string jsonContent = System.IO.File.ReadAllText(jsonFilePath);
+                logCapture.AppendLine("JSON Content:");
+                logCapture.AppendLine(jsonContent);
+                logCapture.AppendLine();
+                
+                // Parse JSON using Unity's built-in JSON utility
+                BatchCommandFile batchFile;
+                try
+                {
+                    batchFile = JsonUtility.FromJson<BatchCommandFile>(jsonContent);
+                    logCapture.AppendLine("✅ JSON parsing successful");
+                }
+                catch (System.Exception e)
+                {
+                    string error = $"Failed to parse JSON: {e.Message}";
+                    logCapture.AppendLine($"❌ ERROR: {error}");
+                    logCapture.AppendLine($"Stack Trace: {e.StackTrace}");
+                    Debug.LogError($"[VibeUnityCLI] {error}");
+                    return false;
+                }
+                
+                if (batchFile == null || batchFile.commands == null || batchFile.commands.Length == 0)
+                {
+                    string error = "No commands found in batch file";
+                    logCapture.AppendLine($"❌ ERROR: {error}");
+                    Debug.LogError($"[VibeUnityCLI] {error}");
+                    return false;
+                }
+                
+                logCapture.AppendLine($"✅ Batch file loaded: {batchFile.commands.Length} commands");
+                if (!string.IsNullOrEmpty(batchFile.description))
+                {
+                    logCapture.AppendLine($"Description: {batchFile.description}");
+                }
+                logCapture.AppendLine();
+                
+                // Validate scene configuration
+                logCapture.AppendLine("=== Scene Configuration Validation ===");
+                if (batchFile.scene == null || string.IsNullOrEmpty(batchFile.scene.name))
+                {
+                    string error = "Batch file missing required 'scene' configuration with 'name' field";
+                    logCapture.AppendLine($"❌ ERROR: {error}");
+                    Debug.LogError($"[VibeUnityCLI] {error}");
+                    return false;
+                }
+                
+                var sceneConfig = batchFile.scene;
+                logCapture.AppendLine($"✅ Scene Name: '{sceneConfig.name}'");
+                logCapture.AppendLine($"   └─ Create if missing: {sceneConfig.create}");
+                if (sceneConfig.create)
+                {
+                    logCapture.AppendLine($"   └─ Creation Path: {sceneConfig.path}");
+                    logCapture.AppendLine($"   └─ Scene Type: {sceneConfig.type}");
+                    logCapture.AppendLine($"   └─ Add to Build: {sceneConfig.addToBuild}");
+                }
+                logCapture.AppendLine();
+                
+                // Handle scene loading/creation
+                logCapture.AppendLine("=== Scene Processing ===");
+                if (!EnsureSceneLoadedWithSceneConfig(sceneConfig, logCapture))
+                {
+                    logCapture.AppendLine($"❌ Failed to load/create scene: {sceneConfig.name}");
+                    Debug.LogError($"[VibeUnityCLI] Failed to load/create scene: {sceneConfig.name}");
+                    return false;
+                }
+                
+                // Execute all commands in the loaded scene
+                logCapture.AppendLine($"=== Command Execution ({batchFile.commands.Length} commands) ===");
+                for (int i = 0; i < batchFile.commands.Length; i++)
+                {
+                    var command = batchFile.commands[i];
+                    logCapture.AppendLine($"--- Command {i + 1}/{batchFile.commands.Length}: {command.action} ---");
+                    logCapture.AppendLine($"Command details: {JsonUtility.ToJson(command, true)}");
+                    
+                    bool commandSuccess = ExecuteBatchCommandWithLogging(command, logCapture);
+                    if (!commandSuccess)
+                    {
+                        logCapture.AppendLine($"❌ Command {i + 1} failed: {command.action}");
+                        Debug.LogError($"[VibeUnityCLI] Command {i + 1} failed: {command.action}");
+                        return false;
+                    }
+                    else
+                    {
+                        logCapture.AppendLine($"✅ Command {i + 1} succeeded: {command.action}");
+                    }
+                    logCapture.AppendLine();
+                }
+                
+                // Save all scenes after batch execution
+                logCapture.AppendLine("Saving scenes and refreshing asset database...");
+                UnityEditor.SceneManagement.EditorSceneManager.SaveOpenScenes();
+                AssetDatabase.Refresh();
+                logCapture.AppendLine("✅ Scenes saved and asset database refreshed");
+                
+                return true;
+            }
+            catch (System.Exception e)
+            {
+                string error = $"Exception executing batch file: {e.Message}";
+                logCapture.AppendLine($"❌ FATAL ERROR: {error}");
+                logCapture.AppendLine($"Stack Trace: {e.StackTrace}");
+                Debug.LogError($"[VibeUnityCLI] {error}");
+                return false;
+            }
+        }
+        
+        /// <summary>
         /// Executes a single batch command
         /// </summary>
         private static bool ExecuteBatchCommand(BatchCommand command)
@@ -1468,9 +1641,98 @@ namespace VibeUnity.Editor
                     return ExecuteAddButtonCommand(command);
                 case "add-text":
                     return ExecuteAddTextCommand(command);
+                case "add-scrollview":
+                    return ExecuteAddScrollViewCommand(command);
+                case "add-cube":
+                    return ExecuteAddCubeCommand(command);
+                case "add-sphere":
+                    return ExecuteAddSphereCommand(command);
+                case "add-plane":
+                    return ExecuteAddPlaneCommand(command);
+                case "add-cylinder":
+                    return ExecuteAddCylinderCommand(command);
+                case "add-capsule":
+                    return ExecuteAddCapsuleCommand(command);
                 default:
                     Debug.LogError($"[VibeUnityCLI] Unknown batch command: {command.action}");
                     return false;
+            }
+        }
+        
+        /// <summary>
+        /// Executes a single batch command with detailed logging
+        /// </summary>
+        /// <param name="command">The command to execute</param>
+        /// <param name="logCapture">StringBuilder to capture log output</param>
+        /// <returns>True if command executed successfully</returns>
+        private static bool ExecuteBatchCommandWithLogging(BatchCommand command, System.Text.StringBuilder logCapture)
+        {
+            try
+            {
+                bool result = false;
+                
+                switch (command.action.ToLower())
+                {
+                    case "create-scene":
+                        logCapture.AppendLine("Executing create-scene command...");
+                        result = ExecuteCreateSceneCommandWithLogging(command, logCapture);
+                        break;
+                    case "add-canvas":
+                        logCapture.AppendLine("Executing add-canvas command...");
+                        result = ExecuteAddCanvasCommandWithLogging(command, logCapture);
+                        break;
+                    case "add-panel":
+                        logCapture.AppendLine("Executing add-panel command...");
+                        result = ExecuteAddPanelCommandWithLogging(command, logCapture);
+                        break;
+                    case "add-button":
+                        logCapture.AppendLine("Executing add-button command...");
+                        result = ExecuteAddButtonCommandWithLogging(command, logCapture);
+                        break;
+                    case "add-text":
+                        logCapture.AppendLine("Executing add-text command...");
+                        result = ExecuteAddTextCommandWithLogging(command, logCapture);
+                        break;
+                    case "add-scrollview":
+                        logCapture.AppendLine("Executing add-scrollview command...");
+                        result = ExecuteAddScrollViewCommandWithLogging(command, logCapture);
+                        break;
+                    case "add-cube":
+                        logCapture.AppendLine("Executing add-cube command...");
+                        result = ExecuteAddCubeCommandWithLogging(command, logCapture);
+                        break;
+                    case "add-sphere":
+                        logCapture.AppendLine("Executing add-sphere command...");
+                        result = ExecuteAddSphereCommandWithLogging(command, logCapture);
+                        break;
+                    case "add-plane":
+                        logCapture.AppendLine("Executing add-plane command...");
+                        result = ExecuteAddPlaneCommandWithLogging(command, logCapture);
+                        break;
+                    case "add-cylinder":
+                        logCapture.AppendLine("Executing add-cylinder command...");
+                        result = ExecuteAddCylinderCommandWithLogging(command, logCapture);
+                        break;
+                    case "add-capsule":
+                        logCapture.AppendLine("Executing add-capsule command...");
+                        result = ExecuteAddCapsuleCommandWithLogging(command, logCapture);
+                        break;
+                    default:
+                        string error = $"Unknown batch command: {command.action}";
+                        logCapture.AppendLine($"❌ ERROR: {error}");
+                        Debug.LogError($"[VibeUnityCLI] {error}");
+                        return false;
+                }
+                
+                return result;
+            }
+            catch (System.Exception e)
+            {
+                string error = $"Exception executing command {command.action}: {e.Message}";
+                logCapture.AppendLine($"❌ ERROR: {error}");
+                logCapture.AppendLine($"Stack Trace: {e.StackTrace}");
+                Debug.LogError($"[VibeUnityCLI] {error}");
+                return false;
             }
         }
         
@@ -1619,6 +1881,128 @@ namespace VibeUnity.Editor
         }
         
         /// <summary>
+        /// Executes add-scrollview batch command
+        /// </summary>
+        private static bool ExecuteAddScrollViewCommand(BatchCommand command)
+        {
+            string scrollViewName = command.name;
+            string parentName = command.parent;
+            string sceneName = command.scene;
+            float width = command.width > 0 ? command.width : 300f;
+            float height = command.height > 0 ? command.height : 200f;
+            string anchor = !string.IsNullOrEmpty(command.anchor) ? command.anchor : "MiddleCenter";
+            bool horizontal = command.horizontal;
+            bool vertical = command.vertical;
+            string scrollbarVisibility = !string.IsNullOrEmpty(command.scrollbarVisibility) ? command.scrollbarVisibility : "AutoHideAndExpandViewport";
+            float scrollSensitivity = command.scrollSensitivity > 0 ? command.scrollSensitivity : 1.0f;
+            
+            bool success = AddScrollView(scrollViewName, parentName, sceneName, width, height, anchor, horizontal, vertical, scrollbarVisibility, scrollSensitivity);
+            
+            // Apply position offset if specified
+            if (success && command.position != null && command.position.Length >= 2)
+            {
+                GameObject scrollViewGO = FindGameObjectInActiveScene(scrollViewName);
+                if (scrollViewGO != null)
+                {
+                    RectTransform rectTransform = scrollViewGO.GetComponent<RectTransform>();
+                    if (rectTransform != null)
+                    {
+                        Vector2 offset = new Vector2(command.position[0], command.position[1]);
+                        rectTransform.anchoredPosition = offset;
+                    }
+                }
+            }
+            
+            return success;
+        }
+        
+        /// <summary>
+        /// Executes add-cube batch command
+        /// </summary>
+        private static bool ExecuteAddCubeCommand(BatchCommand command)
+        {
+            return ExecutePrimitiveCommand(command, PrimitiveType.Cube);
+        }
+        
+        /// <summary>
+        /// Executes add-sphere batch command
+        /// </summary>
+        private static bool ExecuteAddSphereCommand(BatchCommand command)
+        {
+            return ExecutePrimitiveCommand(command, PrimitiveType.Sphere);
+        }
+        
+        /// <summary>
+        /// Executes add-plane batch command
+        /// </summary>
+        private static bool ExecuteAddPlaneCommand(BatchCommand command)
+        {
+            return ExecutePrimitiveCommand(command, PrimitiveType.Plane);
+        }
+        
+        /// <summary>
+        /// Executes add-cylinder batch command
+        /// </summary>
+        private static bool ExecuteAddCylinderCommand(BatchCommand command)
+        {
+            return ExecutePrimitiveCommand(command, PrimitiveType.Cylinder);
+        }
+        
+        /// <summary>
+        /// Executes add-capsule batch command
+        /// </summary>
+        private static bool ExecuteAddCapsuleCommand(BatchCommand command)
+        {
+            return ExecutePrimitiveCommand(command, PrimitiveType.Capsule);
+        }
+        
+        /// <summary>
+        /// Generic method to execute primitive GameObject creation
+        /// </summary>
+        private static bool ExecutePrimitiveCommand(BatchCommand command, PrimitiveType primitiveType)
+        {
+            try
+            {
+                string objectName = command.name;
+                Vector3 position = Vector3.zero;
+                Vector3 rotation = Vector3.zero;
+                Vector3 scale = Vector3.one;
+                
+                // Parse position if specified
+                if (command.position != null && command.position.Length >= 3)
+                {
+                    position = new Vector3(command.position[0], command.position[1], command.position[2]);
+                }
+                
+                // Parse rotation if specified
+                if (command.rotation != null && command.rotation.Length >= 3)
+                {
+                    rotation = new Vector3(command.rotation[0], command.rotation[1], command.rotation[2]);
+                }
+                
+                // Parse scale if specified
+                if (command.scale != null && command.scale.Length >= 3)
+                {
+                    scale = new Vector3(command.scale[0], command.scale[1], command.scale[2]);
+                }
+                
+                // Create the primitive GameObject
+                GameObject primitiveObject = GameObject.CreatePrimitive(primitiveType);
+                primitiveObject.name = objectName;
+                primitiveObject.transform.position = position;
+                primitiveObject.transform.eulerAngles = rotation;
+                primitiveObject.transform.localScale = scale;
+                
+                return true;
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"[VibeUnityCLI] Failed to create {primitiveType}: {e.Message}");
+                return false;
+            }
+        }
+        
+        /// <summary>
         /// Finds a GameObject by name in the active scene
         /// </summary>
         private static GameObject FindGameObjectInActiveScene(string name)
@@ -1639,11 +2023,16 @@ namespace VibeUnity.Editor
         }
         
         /// <summary>
-        /// Command line entry point for help
+        /// Command line entry point for help - DISABLED
         /// Usage: Unity -batchmode -quit -executeMethod VibeUnity.Editor.CLI.ShowHelpFromCommandLine
         /// </summary>
         public static void ShowHelpFromCommandLine()
         {
+            // CLI commands disabled - functionality commented out
+            Debug.LogWarning("[VibeUnityCLI] CLI commands are disabled. Use internal API methods instead.");
+            return;
+            
+            /*
             Debug.Log("[VibeUnityCLI] === Vibe Unity Help ===");
             Debug.Log("[VibeUnityCLI] ");
             Debug.Log("[VibeUnityCLI] SCENE CREATION:");
@@ -1668,6 +2057,604 @@ namespace VibeUnity.Editor
             Debug.Log("[VibeUnityCLI] Available Render Modes: ScreenSpaceOverlay, ScreenSpaceCamera, WorldSpace");
             Debug.Log("[VibeUnityCLI] Available Scale Modes: ConstantPixelSize, ScaleWithScreenSize, ConstantPhysicalSize");
             Debug.Log("[VibeUnityCLI] ===============================");
+            */
+        }
+        
+        #endregion
+        
+        #region Logging Command Execution Wrappers
+        
+        /// <summary>
+        /// Executes create-scene batch command with logging
+        /// </summary>
+        private static bool ExecuteCreateSceneCommandWithLogging(BatchCommand command, System.Text.StringBuilder logCapture)
+        {
+            try
+            {
+                string sceneName = command.name;
+                string scenePath = !string.IsNullOrEmpty(command.path) ? command.path : "Assets/Scenes";
+                string sceneType = !string.IsNullOrEmpty(command.type) ? command.type : "DefaultGameObjects";
+                bool addToBuild = command.addToBuild;
+                
+                logCapture.AppendLine($"Scene Name: {sceneName}");
+                logCapture.AppendLine($"Scene Path: {scenePath}");
+                logCapture.AppendLine($"Scene Type: {sceneType}");
+                logCapture.AppendLine($"Add to Build: {addToBuild}");
+                
+                bool result = CreateScene(sceneName, scenePath, sceneType, addToBuild);
+                
+                if (result)
+                {
+                    logCapture.AppendLine($"✅ Scene created successfully: {scenePath}/{sceneName}.unity");
+                }
+                else
+                {
+                    logCapture.AppendLine($"❌ Failed to create scene: {scenePath}/{sceneName}.unity");
+                }
+                
+                return result;
+            }
+            catch (System.Exception e)
+            {
+                logCapture.AppendLine($"❌ Exception in create-scene: {e.Message}");
+                logCapture.AppendLine($"Stack Trace: {e.StackTrace}");
+                return false;
+            }
+        }
+        
+        /// <summary>
+        /// Executes add-canvas batch command with logging
+        /// </summary>
+        private static bool ExecuteAddCanvasCommandWithLogging(BatchCommand command, System.Text.StringBuilder logCapture)
+        {
+            try
+            {
+                string canvasName = command.name;
+                string renderMode = !string.IsNullOrEmpty(command.renderMode) ? command.renderMode : "ScreenSpaceOverlay";
+                int width = command.referenceWidth > 0 ? command.referenceWidth : 1920;
+                int height = command.referenceHeight > 0 ? command.referenceHeight : 1080;
+                string scaleMode = !string.IsNullOrEmpty(command.scaleMode) ? command.scaleMode : "ScaleWithScreenSize";
+                int sortingOrder = command.sortingOrder;
+                
+                Vector3? worldPosition = null;
+                if (command.worldPosition != null && command.worldPosition.Length == 3)
+                {
+                    worldPosition = new Vector3(command.worldPosition[0], command.worldPosition[1], command.worldPosition[2]);
+                }
+                
+                logCapture.AppendLine($"Canvas Name: {canvasName}");
+                logCapture.AppendLine($"Render Mode: {renderMode}");
+                logCapture.AppendLine($"Resolution: {width}x{height}");
+                logCapture.AppendLine($"Scale Mode: {scaleMode}");
+                logCapture.AppendLine($"Sorting Order: {sortingOrder}");
+                if (worldPosition.HasValue)
+                    logCapture.AppendLine($"World Position: {worldPosition.Value}");
+                
+                // Scene is already loaded at batch level, pass null to use current scene
+                bool result = AddCanvas(canvasName, null, renderMode, width, height, scaleMode, sortingOrder, worldPosition);
+                
+                if (result)
+                {
+                    logCapture.AppendLine($"✅ Canvas created successfully: {canvasName}");
+                }
+                else
+                {
+                    logCapture.AppendLine($"❌ Failed to create canvas: {canvasName}");
+                }
+                
+                return result;
+            }
+            catch (System.Exception e)
+            {
+                logCapture.AppendLine($"❌ Exception in add-canvas: {e.Message}");
+                logCapture.AppendLine($"Stack Trace: {e.StackTrace}");
+                return false;
+            }
+        }
+        
+        /// <summary>
+        /// Executes add-panel batch command with logging
+        /// </summary>
+        private static bool ExecuteAddPanelCommandWithLogging(BatchCommand command, System.Text.StringBuilder logCapture)
+        {
+            try
+            {
+                string panelName = command.name;
+                string parentName = command.parent;
+                string sceneName = command.scene;
+                float width = command.width > 0 ? command.width : 200f;
+                float height = command.height > 0 ? command.height : 200f;
+                string anchor = !string.IsNullOrEmpty(command.anchor) ? command.anchor : "MiddleCenter";
+                
+                logCapture.AppendLine($"Panel Name: {panelName}");
+                logCapture.AppendLine($"Parent: {parentName ?? "auto-detect"}");
+                logCapture.AppendLine($"Size: {width}x{height}");
+                logCapture.AppendLine($"Anchor: {anchor}");
+                
+                // Scene is already loaded at batch level, pass null to use current scene
+                bool result = AddPanel(panelName, parentName, null, width, height, anchor);
+                
+                // Apply position offset if specified
+                if (result && command.position != null && command.position.Length >= 2)
+                {
+                    GameObject panelGO = FindGameObjectInActiveScene(panelName);
+                    if (panelGO != null)
+                    {
+                        RectTransform rectTransform = panelGO.GetComponent<RectTransform>();
+                        if (rectTransform != null)
+                        {
+                            Vector2 offset = new Vector2(command.position[0], command.position[1]);
+                            rectTransform.anchoredPosition = offset;
+                            logCapture.AppendLine($"Applied position offset: {offset}");
+                        }
+                    }
+                }
+                
+                if (result)
+                {
+                    logCapture.AppendLine($"✅ Panel created successfully: {panelName}");
+                }
+                else
+                {
+                    logCapture.AppendLine($"❌ Failed to create panel: {panelName}");
+                }
+                
+                return result;
+            }
+            catch (System.Exception e)
+            {
+                logCapture.AppendLine($"❌ Exception in add-panel: {e.Message}");
+                logCapture.AppendLine($"Stack Trace: {e.StackTrace}");
+                return false;
+            }
+        }
+        
+        /// <summary>
+        /// Executes add-button batch command with logging
+        /// </summary>
+        private static bool ExecuteAddButtonCommandWithLogging(BatchCommand command, System.Text.StringBuilder logCapture)
+        {
+            try
+            {
+                string buttonName = command.name;
+                string parentName = command.parent;
+                string sceneName = command.scene;
+                string buttonText = !string.IsNullOrEmpty(command.text) ? command.text : "Button";
+                float width = command.width > 0 ? command.width : 160f;
+                float height = command.height > 0 ? command.height : 30f;
+                string anchor = !string.IsNullOrEmpty(command.anchor) ? command.anchor : "MiddleCenter";
+                
+                logCapture.AppendLine($"Button Name: {buttonName}");
+                logCapture.AppendLine($"Parent: {parentName ?? "auto-detect"}");
+                logCapture.AppendLine($"Text: {buttonText}");
+                logCapture.AppendLine($"Size: {width}x{height}");
+                logCapture.AppendLine($"Anchor: {anchor}");
+                
+                // Scene is already loaded at batch level, pass null to use current scene
+                bool result = AddButton(buttonName, parentName, null, buttonText, width, height, anchor);
+                
+                // Apply position offset if specified
+                if (result && command.position != null && command.position.Length >= 2)
+                {
+                    GameObject buttonGO = FindGameObjectInActiveScene(buttonName);
+                    if (buttonGO != null)
+                    {
+                        RectTransform rectTransform = buttonGO.GetComponent<RectTransform>();
+                        if (rectTransform != null)
+                        {
+                            Vector2 offset = new Vector2(command.position[0], command.position[1]);
+                            rectTransform.anchoredPosition = offset;
+                            logCapture.AppendLine($"Applied position offset: {offset}");
+                        }
+                    }
+                }
+                
+                if (result)
+                {
+                    logCapture.AppendLine($"✅ Button created successfully: {buttonName}");
+                }
+                else
+                {
+                    logCapture.AppendLine($"❌ Failed to create button: {buttonName}");
+                }
+                
+                return result;
+            }
+            catch (System.Exception e)
+            {
+                logCapture.AppendLine($"❌ Exception in add-button: {e.Message}");
+                logCapture.AppendLine($"Stack Trace: {e.StackTrace}");
+                return false;
+            }
+        }
+        
+        /// <summary>
+        /// Executes add-text batch command with logging
+        /// </summary>
+        private static bool ExecuteAddTextCommandWithLogging(BatchCommand command, System.Text.StringBuilder logCapture)
+        {
+            try
+            {
+                string textName = command.name;
+                string parentName = command.parent;
+                string sceneName = command.scene;
+                string textContent = !string.IsNullOrEmpty(command.text) ? command.text : "New Text";
+                int fontSize = command.fontSize > 0 ? command.fontSize : 14;
+                float width = command.width > 0 ? command.width : 200f;
+                float height = command.height > 0 ? command.height : 50f;
+                string anchor = !string.IsNullOrEmpty(command.anchor) ? command.anchor : "MiddleCenter";
+                
+                logCapture.AppendLine($"Text Name: {textName}");
+                logCapture.AppendLine($"Parent: {parentName ?? "auto-detect"}");
+                logCapture.AppendLine($"Content: {textContent}");
+                logCapture.AppendLine($"Font Size: {fontSize}");
+                logCapture.AppendLine($"Size: {width}x{height}");
+                logCapture.AppendLine($"Anchor: {anchor}");
+                
+                // Scene is already loaded at batch level, pass null to use current scene
+                bool result = AddText(textName, parentName, null, textContent, fontSize, width, height, anchor);
+                
+                // Apply position offset and color if specified
+                if (result && (command.position != null || !string.IsNullOrEmpty(command.color)))
+                {
+                    GameObject textGO = FindGameObjectInActiveScene(textName);
+                    if (textGO != null)
+                    {
+                        RectTransform rectTransform = textGO.GetComponent<RectTransform>();
+                        if (rectTransform != null && command.position != null && command.position.Length >= 2)
+                        {
+                            Vector2 offset = new Vector2(command.position[0], command.position[1]);
+                            rectTransform.anchoredPosition = offset;
+                            logCapture.AppendLine($"Applied position offset: {offset}");
+                        }
+                        
+                        // Apply color if specified
+                        if (!string.IsNullOrEmpty(command.color))
+                        {
+                            Text textComponent = textGO.GetComponent<Text>();
+                            if (textComponent != null && ColorUtility.TryParseHtmlString(command.color, out Color color))
+                            {
+                                textComponent.color = color;
+                                logCapture.AppendLine($"Applied color: {command.color}");
+                            }
+                            else
+                            {
+                                logCapture.AppendLine($"⚠️ Warning: Could not parse color: {command.color}");
+                            }
+                        }
+                    }
+                }
+                
+                if (result)
+                {
+                    logCapture.AppendLine($"✅ Text created successfully: {textName}");
+                }
+                else
+                {
+                    logCapture.AppendLine($"❌ Failed to create text: {textName}");
+                }
+                
+                return result;
+            }
+            catch (System.Exception e)
+            {
+                logCapture.AppendLine($"❌ Exception in add-text: {e.Message}");
+                logCapture.AppendLine($"Stack Trace: {e.StackTrace}");
+                return false;
+            }
+        }
+        
+        /// <summary>
+        /// Executes add-scrollview batch command with logging
+        /// </summary>
+        private static bool ExecuteAddScrollViewCommandWithLogging(BatchCommand command, System.Text.StringBuilder logCapture)
+        {
+            try
+            {
+                string scrollViewName = command.name;
+                string parentName = command.parent;
+                string sceneName = command.scene;
+                float width = command.width > 0 ? command.width : 300f;
+                float height = command.height > 0 ? command.height : 200f;
+                string anchor = !string.IsNullOrEmpty(command.anchor) ? command.anchor : "MiddleCenter";
+                bool horizontal = command.horizontal;
+                bool vertical = command.vertical;
+                string scrollbarVisibility = !string.IsNullOrEmpty(command.scrollbarVisibility) ? command.scrollbarVisibility : "AutoHideAndExpandViewport";
+                float scrollSensitivity = command.scrollSensitivity > 0 ? command.scrollSensitivity : 1.0f;
+                
+                logCapture.AppendLine($"ScrollView Name: {scrollViewName}");
+                logCapture.AppendLine($"Parent: {parentName ?? "auto-detect"}");
+                logCapture.AppendLine($"Size: {width}x{height}");
+                logCapture.AppendLine($"Anchor: {anchor}");
+                logCapture.AppendLine($"Horizontal: {horizontal}");
+                logCapture.AppendLine($"Vertical: {vertical}");
+                logCapture.AppendLine($"Scrollbar Visibility: {scrollbarVisibility}");
+                logCapture.AppendLine($"Scroll Sensitivity: {scrollSensitivity}");
+                
+                bool result = AddScrollView(scrollViewName, parentName, sceneName, width, height, anchor, horizontal, vertical, scrollbarVisibility, scrollSensitivity);
+                
+                if (result)
+                {
+                    GameObject scrollViewGO = FindGameObjectInActiveScene(scrollViewName);
+                    if (scrollViewGO != null)
+                    {
+                        RectTransform rectTransform = scrollViewGO.GetComponent<RectTransform>();
+                        if (rectTransform != null && command.position != null && command.position.Length >= 2)
+                        {
+                            Vector2 offset = new Vector2(command.position[0], command.position[1]);
+                            rectTransform.anchoredPosition = offset;
+                            logCapture.AppendLine($"Applied position offset: {offset}");
+                        }
+                    }
+                }
+                
+                if (result)
+                {
+                    logCapture.AppendLine($"✅ ScrollView created successfully: {scrollViewName}");
+                }
+                else
+                {
+                    logCapture.AppendLine($"❌ Failed to create scrollview: {scrollViewName}");
+                }
+                
+                return result;
+            }
+            catch (System.Exception e)
+            {
+                logCapture.AppendLine($"❌ Exception in add-scrollview: {e.Message}");
+                logCapture.AppendLine($"Stack Trace: {e.StackTrace}");
+                return false;
+            }
+        }
+        
+        /// <summary>
+        /// Executes add-cube batch command with logging
+        /// </summary>
+        private static bool ExecuteAddCubeCommandWithLogging(BatchCommand command, System.Text.StringBuilder logCapture)
+        {
+            return ExecutePrimitiveCommandWithLogging(command, logCapture, PrimitiveType.Cube, "Cube");
+        }
+        
+        /// <summary>
+        /// Executes add-sphere batch command with logging
+        /// </summary>
+        private static bool ExecuteAddSphereCommandWithLogging(BatchCommand command, System.Text.StringBuilder logCapture)
+        {
+            return ExecutePrimitiveCommandWithLogging(command, logCapture, PrimitiveType.Sphere, "Sphere");
+        }
+        
+        /// <summary>
+        /// Executes add-plane batch command with logging
+        /// </summary>
+        private static bool ExecuteAddPlaneCommandWithLogging(BatchCommand command, System.Text.StringBuilder logCapture)
+        {
+            return ExecutePrimitiveCommandWithLogging(command, logCapture, PrimitiveType.Plane, "Plane");
+        }
+        
+        /// <summary>
+        /// Executes add-cylinder batch command with logging
+        /// </summary>
+        private static bool ExecuteAddCylinderCommandWithLogging(BatchCommand command, System.Text.StringBuilder logCapture)
+        {
+            return ExecutePrimitiveCommandWithLogging(command, logCapture, PrimitiveType.Cylinder, "Cylinder");
+        }
+        
+        /// <summary>
+        /// Executes add-capsule batch command with logging
+        /// </summary>
+        private static bool ExecuteAddCapsuleCommandWithLogging(BatchCommand command, System.Text.StringBuilder logCapture)
+        {
+            return ExecutePrimitiveCommandWithLogging(command, logCapture, PrimitiveType.Capsule, "Capsule");
+        }
+        
+        /// <summary>
+        /// Generic method to execute primitive GameObject creation with logging
+        /// </summary>
+        private static bool ExecutePrimitiveCommandWithLogging(BatchCommand command, System.Text.StringBuilder logCapture, PrimitiveType primitiveType, string typeName)
+        {
+            try
+            {
+                string objectName = command.name;
+                Vector3 position = Vector3.zero;
+                Vector3 rotation = Vector3.zero;
+                Vector3 scale = Vector3.one;
+                
+                // Parse position if specified
+                if (command.position != null && command.position.Length >= 3)
+                {
+                    position = new Vector3(command.position[0], command.position[1], command.position[2]);
+                }
+                
+                logCapture.AppendLine($"{typeName} Name: {objectName}");
+                logCapture.AppendLine($"Position: {position}");
+                logCapture.AppendLine($"Scale: {scale}");
+                
+                // Create the primitive GameObject
+                GameObject primitiveObject = GameObject.CreatePrimitive(primitiveType);
+                primitiveObject.name = objectName;
+                primitiveObject.transform.position = position;
+                primitiveObject.transform.rotation = Quaternion.Euler(rotation);
+                primitiveObject.transform.localScale = scale;
+                
+                logCapture.AppendLine($"✅ {typeName} created successfully: {objectName}");
+                logCapture.AppendLine($"   └─ Position: {primitiveObject.transform.position}");
+                logCapture.AppendLine($"   └─ Has Collider: {primitiveObject.GetComponent<Collider>() != null}");
+                logCapture.AppendLine($"   └─ Has Renderer: {primitiveObject.GetComponent<Renderer>() != null}");
+                
+                return true;
+            }
+            catch (System.Exception e)
+            {
+                logCapture.AppendLine($"❌ Exception in add-{typeName.ToLower()}: {e.Message}");
+                logCapture.AppendLine($"Stack Trace: {e.StackTrace}");
+                return false;
+            }
+        }
+        
+        /// <summary>
+        /// Ensures a scene is loaded based on scene configuration, with detailed logging
+        /// </summary>
+        /// <param name="sceneConfig">Scene configuration specifying how to handle the scene</param>
+        /// <param name="logCapture">StringBuilder to capture log output</param>
+        /// <returns>True if scene was successfully loaded or created</returns>
+        private static bool EnsureSceneLoadedWithSceneConfig(SceneConfig sceneConfig, System.Text.StringBuilder logCapture)
+        {
+            try
+            {
+                string sceneName = sceneConfig.name;
+                logCapture.AppendLine($"Processing scene: '{sceneName}'");
+                
+                // First, try to find the scene file
+                string sceneAssetPath = FindSceneAsset(sceneName);
+                
+                if (!string.IsNullOrEmpty(sceneAssetPath))
+                {
+                    // Scene exists, try to load it
+                    logCapture.AppendLine($"✅ Scene file found: {sceneAssetPath}");
+                    
+                    try
+                    {
+                        Scene targetScene = EditorSceneManager.OpenScene(sceneAssetPath);
+                        if (targetScene.IsValid())
+                        {
+                            logCapture.AppendLine($"✅ Scene loaded successfully: {sceneName}");
+                            logCapture.AppendLine($"   └─ Root GameObjects: {targetScene.rootCount}");
+                            logCapture.AppendLine($"   └─ Scene Path: {targetScene.path}");
+                            return true;
+                        }
+                        else
+                        {
+                            logCapture.AppendLine($"❌ Scene loaded but is invalid: {sceneName}");
+                            return false;
+                        }
+                    }
+                    catch (System.Exception e)
+                    {
+                        logCapture.AppendLine($"❌ Failed to load scene: {e.Message}");
+                        return false;
+                    }
+                }
+                else
+                {
+                    // Scene doesn't exist
+                    if (sceneConfig.create)
+                    {
+                        // Create the scene as requested
+                        logCapture.AppendLine($"⚠️ Scene not found, creating as requested: {sceneName}");
+                        logCapture.AppendLine($"   └─ Path: {sceneConfig.path}");
+                        logCapture.AppendLine($"   └─ Type: {sceneConfig.type}");
+                        logCapture.AppendLine($"   └─ Add to Build: {sceneConfig.addToBuild}");
+                        
+                        // Create the scene with specified parameters
+                        bool sceneCreated = CreateScene(sceneName, sceneConfig.path, sceneConfig.type, sceneConfig.addToBuild);
+                        
+                        if (sceneCreated)
+                        {
+                            logCapture.AppendLine($"✅ Scene created and loaded: {sceneName}");
+                            logCapture.AppendLine($"   └─ Full Path: {sceneConfig.path}/{sceneName}.unity");
+                            return true;
+                        }
+                        else
+                        {
+                            logCapture.AppendLine($"❌ Failed to create scene: {sceneName}");
+                            return false;
+                        }
+                    }
+                    else
+                    {
+                        // Scene doesn't exist and creation not requested
+                        logCapture.AppendLine($"❌ Scene '{sceneName}' not found and 'create' is false");
+                        logCapture.AppendLine($"   └─ Set scene.create = true to auto-create missing scenes");
+                        return false;
+                    }
+                }
+            }
+            catch (System.Exception e)
+            {
+                logCapture.AppendLine($"❌ Exception in EnsureSceneLoadedWithSceneConfig: {e.Message}");
+                logCapture.AppendLine($"Stack Trace: {e.StackTrace}");
+                return false;
+            }
+        }
+        
+        /// <summary>
+        /// Ensures a scene is loaded, creating it if necessary, with detailed logging (Legacy method)
+        /// </summary>
+        /// <param name="sceneName">Name of the scene (without .unity extension)</param>
+        /// <param name="logCapture">StringBuilder to capture log output</param>
+        /// <returns>True if scene was successfully loaded or created</returns>
+        private static bool EnsureSceneLoadedWithLogging(string sceneName, System.Text.StringBuilder logCapture)
+        {
+            try
+            {
+                logCapture.AppendLine($"Checking scene: '{sceneName}'");
+                
+                // First, try to find the scene file
+                string sceneAssetPath = FindSceneAsset(sceneName);
+                
+                if (!string.IsNullOrEmpty(sceneAssetPath))
+                {
+                    // Scene exists, try to load it
+                    logCapture.AppendLine($"✅ Scene file found: {sceneAssetPath}");
+                    
+                    try
+                    {
+                        Scene targetScene = EditorSceneManager.OpenScene(sceneAssetPath);
+                        if (targetScene.IsValid())
+                        {
+                            logCapture.AppendLine($"✅ Scene loaded successfully: {sceneName}");
+                            logCapture.AppendLine($"   └─ Root GameObjects: {targetScene.rootCount}");
+                            logCapture.AppendLine($"   └─ Scene Path: {targetScene.path}");
+                            return true;
+                        }
+                        else
+                        {
+                            logCapture.AppendLine($"❌ Scene loaded but is invalid: {sceneName}");
+                            return false;
+                        }
+                    }
+                    catch (System.Exception e)
+                    {
+                        logCapture.AppendLine($"❌ Failed to load scene: {e.Message}");
+                        return false;
+                    }
+                }
+                else
+                {
+                    // Scene doesn't exist, create it
+                    logCapture.AppendLine($"⚠️ Scene not found, creating new scene: {sceneName}");
+                    
+                    // Use default path and settings for new scenes
+                    string defaultPath = "Assets/Scenes";
+                    string sceneType = "DefaultGameObjects";
+                    bool addToBuild = false;
+                    
+                    logCapture.AppendLine($"   └─ Path: {defaultPath}");
+                    logCapture.AppendLine($"   └─ Type: {sceneType}");
+                    logCapture.AppendLine($"   └─ Add to Build: {addToBuild}");
+                    
+                    // Create the scene
+                    bool sceneCreated = CreateScene(sceneName, defaultPath, sceneType, addToBuild);
+                    
+                    if (sceneCreated)
+                    {
+                        logCapture.AppendLine($"✅ Scene created and loaded: {sceneName}");
+                        logCapture.AppendLine($"   └─ Full Path: {defaultPath}/{sceneName}.unity");
+                        return true;
+                    }
+                    else
+                    {
+                        logCapture.AppendLine($"❌ Failed to create scene: {sceneName}");
+                        return false;
+                    }
+                }
+            }
+            catch (System.Exception e)
+            {
+                logCapture.AppendLine($"❌ Exception in EnsureSceneLoaded: {e.Message}");
+                logCapture.AppendLine($"Stack Trace: {e.StackTrace}");
+                return false;
+            }
         }
         
         #endregion
@@ -1717,23 +2704,60 @@ namespace VibeUnity.Editor
                     if (IsFileLocked(filePath))
                         continue;
                     
-                    Debug.Log($"[VibeUnityCLI] Found command file: {Path.GetFileName(filePath)}");
+                    string fileName = Path.GetFileName(filePath);
+                    Debug.Log($"[VibeUnityCLI] Found command file: {fileName}");
                     
-                    // Execute the batch file
-                    bool success = ExecuteBatchFile(filePath);
+                    // Start log capture
+                    var logCapture = new System.Text.StringBuilder();
+                    logCapture.AppendLine($"=== Processing {fileName} ===");
+                    logCapture.AppendLine($"Timestamp: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+                    logCapture.AppendLine($"File Path: {filePath}");
+                    logCapture.AppendLine();
                     
-                    // Move file to processed directory or delete it
+                    bool success = false;
+                    try
+                    {
+                        // Execute the batch file with log capture
+                        success = ExecuteBatchFileWithLogging(filePath, logCapture);
+                    }
+                    catch (Exception ex)
+                    {
+                        logCapture.AppendLine($"FATAL ERROR during execution: {ex.Message}");
+                        logCapture.AppendLine($"Stack Trace: {ex.StackTrace}");
+                        success = false;
+                    }
+                    
+                    // Create processed directory
                     string processedDir = Path.Combine(COMMAND_QUEUE_DIR, "processed");
                     if (!Directory.Exists(processedDir))
                         Directory.CreateDirectory(processedDir);
                     
                     string timestamp = DateTime.Now.ToString("yyyyMMdd-HHmmss");
-                    string processedPath = Path.Combine(processedDir, $"{timestamp}-{Path.GetFileName(filePath)}");
+                    string fileNameWithoutExt = Path.GetFileNameWithoutExtension(fileName);
+                    string processedJsonPath = Path.Combine(processedDir, $"{timestamp}-{fileName}");
+                    string logFilePath = Path.Combine(processedDir, $"{timestamp}-{fileNameWithoutExt}.log");
+                    
+                    // Save the log file
+                    logCapture.AppendLine();
+                    logCapture.AppendLine($"=== Processing Complete ===");
+                    logCapture.AppendLine($"Result: {(success ? "SUCCESS" : "FAILED")}");
+                    logCapture.AppendLine($"End Time: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
                     
                     try
                     {
-                        File.Move(filePath, processedPath);
-                        Debug.Log($"[VibeUnityCLI] Command file processed and moved to: {processedPath}");
+                        File.WriteAllText(logFilePath, logCapture.ToString());
+                        Debug.Log($"[VibeUnityCLI] Log saved to: {logFilePath}");
+                    }
+                    catch (Exception logEx)
+                    {
+                        Debug.LogError($"[VibeUnityCLI] Failed to save log file: {logEx.Message}");
+                    }
+                    
+                    // Move the original JSON file
+                    try
+                    {
+                        File.Move(filePath, processedJsonPath);
+                        Debug.Log($"[VibeUnityCLI] Command file processed and moved to: {processedJsonPath}");
                     }
                     catch (Exception e)
                     {
@@ -1742,7 +2766,7 @@ namespace VibeUnity.Editor
                         try
                         {
                             File.Delete(filePath);
-                            Debug.Log($"[VibeUnityCLI] Command file deleted: {Path.GetFileName(filePath)}");
+                            Debug.Log($"[VibeUnityCLI] Command file deleted: {fileName}");
                         }
                         catch
                         {
@@ -1752,11 +2776,11 @@ namespace VibeUnity.Editor
                     
                     if (success)
                     {
-                        Debug.Log("[VibeUnityCLI] ✅ File watcher command executed successfully");
+                        Debug.Log($"[VibeUnityCLI] ✅ File watcher command executed successfully - see {logFilePath}");
                     }
                     else
                     {
-                        Debug.LogError("[VibeUnityCLI] ❌ File watcher command execution failed");
+                        Debug.LogError($"[VibeUnityCLI] ❌ File watcher command execution failed - see {logFilePath}");
                     }
                 }
             }

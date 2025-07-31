@@ -26,21 +26,28 @@ namespace VibeUnity.Editor
         
         static VibeUnityHttpServer()
         {
-            EditorApplication.update += Initialize;
+            // HTTP Server disabled - functionality commented out
+            // EditorApplication.update += Initialize;
         }
         
         private static void Initialize()
         {
-            EditorApplication.update -= Initialize;
+            // HTTP Server disabled - functionality commented out
+            // EditorApplication.update -= Initialize;
             // Check if enabled in preferences
-            if (VibeUnityMenu.IsHttpServerEnabled)
-            {
-                StartServerInternal();
-            }
+            // if (VibeUnityMenu.IsHttpServerEnabled)
+            // {
+            //     StartServerInternal();
+            // }
         }
         
         public static void StartServerInternal()
         {
+            // HTTP Server disabled - functionality commented out
+            Debug.Log("[VibeUnityHTTP] HTTP Server is disabled");
+            return;
+            
+            /*
             if (isRunning)
             {
                 Debug.Log("[VibeUnityHTTP] Server already running on port " + PORT);
@@ -67,10 +74,16 @@ namespace VibeUnity.Editor
             {
                 Debug.LogError($"[VibeUnityHTTP] Failed to start server: {e.Message}");
             }
+            */
         }
         
         public static void StopServerInternal()
         {
+            // HTTP Server disabled - functionality commented out
+            Debug.Log("[VibeUnityHTTP] HTTP Server is disabled");
+            return;
+            
+            /*
             if (!isRunning) return;
             
             isRunning = false;
@@ -78,6 +91,7 @@ namespace VibeUnity.Editor
             listenerThread?.Join(1000);
             
             Debug.Log("[VibeUnityHTTP] Server stopped");
+            */
         }
         
         private static void OnPlayModeChanged(PlayModeStateChange state)

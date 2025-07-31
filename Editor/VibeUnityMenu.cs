@@ -18,19 +18,22 @@ namespace VibeUnity.Editor
         static VibeUnityMenu()
         {
             // Load preferences
-            isHttpServerEnabled = EditorPrefs.GetBool(HTTP_SERVER_ENABLED_KEY, true);
+            isHttpServerEnabled = EditorPrefs.GetBool(HTTP_SERVER_ENABLED_KEY, false); // Default to false since disabled
             isFileWatcherEnabled = EditorPrefs.GetBool(FILE_WATCHER_ENABLED_KEY, true);
             
             // Apply initial state
             EditorApplication.delayCall += () =>
             {
-                ApplyHttpServerState();
+                // HTTP Server disabled - don't apply state
+                // ApplyHttpServerState();
                 ApplyFileWatcherState();
             };
         }
         
-        #region HTTP Server Menu Items
+        #region HTTP Server Menu Items - DISABLED
         
+        // HTTP Server menu options disabled
+        /*
         [MenuItem("Tools/Vibe Unity/HTTP Server Enabled", priority = 100)]
         private static void ToggleHttpServer()
         {
@@ -47,9 +50,12 @@ namespace VibeUnity.Editor
             Menu.SetChecked("Tools/Vibe Unity/HTTP Server Enabled", isHttpServerEnabled);
             return true;
         }
+        */
         
         private static void ApplyHttpServerState()
         {
+            // HTTP Server disabled - functionality commented out
+            /*
             if (isHttpServerEnabled)
             {
                 // Start the server if not already running
@@ -66,6 +72,7 @@ namespace VibeUnity.Editor
                     VibeUnityHttpServer.StopServerInternal();
                 }
             }
+            */
         }
         
         #endregion
@@ -110,10 +117,12 @@ namespace VibeUnity.Editor
         {
             // For now, show a dialog with current settings
             string message = $"Vibe Unity Configuration\n\n" +
-                           $"HTTP Server: {(isHttpServerEnabled ? "Enabled" : "Disabled")}\n" +
-                           $"Port: 9876\n\n" +
+                           $"HTTP Server: DISABLED\n" +
+                           $"CLI Commands: DISABLED\n\n" +
                            $"File Watcher: {(isFileWatcherEnabled ? "Enabled" : "Disabled")}\n" +
                            $"Watch Directory: .vibe-commands\n\n" +
+                           $"Note: HTTP Server and CLI commands have been disabled.\n" +
+                           $"File watching system remains functional.\n" +
                            $"Settings are saved in Unity EditorPrefs.";
             
             EditorUtility.DisplayDialog("Vibe Unity Configuration", message, "OK");

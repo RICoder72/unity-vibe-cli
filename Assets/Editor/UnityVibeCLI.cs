@@ -109,7 +109,7 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
-// using UnityEngine.UI; // Commented out to avoid dependency on Unity UI package
+using UnityEngine.UI;
 using System.IO;
 using System.Collections.Generic;
 using System.Linq;
@@ -168,7 +168,12 @@ namespace UnityVibe.Editor
                 
                 if (saved)
                 {
-                    Debug.Log($"[UnityCLI] Successfully created {sceneSetup} scene: {fullScenePath}");
+                    // Log detailed success information  
+                Debug.Log($"[UnityCLI] ✅ SUCCESS: Created scene '{sceneName}'");
+                Debug.Log($"[UnityCLI]    └─ Type: {sceneSetup}");
+                Debug.Log($"[UnityCLI]    └─ Path: {fullScenePath}");
+                Debug.Log($"[UnityCLI]    └─ Added to Build: {addToBuildSettings}");
+                Debug.Log($"[UnityCLI]    └─ Scene Objects: {newScene.rootCount} root GameObjects");
                     
                     // Add to build settings if requested
                     if (addToBuildSettings)
@@ -228,9 +233,10 @@ namespace UnityVibe.Editor
         #region Canvas Creation Methods
         
         /// <summary>
-        /// Adds a canvas to the currently active scene with specified parameters
+        /// Adds a canvas to the specified or currently active scene with specified parameters
         /// </summary>
         /// <param name="canvasName">Name for the canvas GameObject</param>
+        /// <param name="sceneName">Name of scene to target (optional)</param>
         /// <param name="renderMode">Canvas render mode (ScreenSpaceOverlay, ScreenSpaceCamera, WorldSpace)</param>
         /// <param name="referenceWidth">Reference resolution width</param>
         /// <param name="referenceHeight">Reference resolution height</param>
@@ -239,7 +245,8 @@ namespace UnityVibe.Editor
         /// <param name="worldPosition">Position for WorldSpace canvas</param>
         /// <returns>True if canvas was created successfully</returns>
         public static bool AddCanvas(
-            string canvasName, 
+            string canvasName,
+            string sceneName = null,
             string renderMode = "ScreenSpaceOverlay", 
             int referenceWidth = 1920, 
             int referenceHeight = 1080,
@@ -247,29 +254,59 @@ namespace UnityVibe.Editor
             int sortingOrder = 0,
             Vector3? worldPosition = null)
         {
-            Debug.LogError("[UnityCLI] Canvas creation requires Unity UI package to be installed in your project.");
-            Debug.LogError("[UnityCLI] Please install Unity UI via Window > Package Manager > Unity Registry > UI Toolkit or Legacy UI.");
-            Debug.LogError("[UnityCLI] Canvas functionality is disabled to maintain package compatibility.");
-            return false;
-            
-            // TODO: Re-enable canvas functionality when UI package is available
-            // This code is commented out to avoid compilation errors
-            /*
             try
             {
+                // Load target scene if specified
+                if (!LoadTargetScene(sceneName))
+                {
+                    return false;
+                }
+                
                 // Validate active scene
                 Scene activeScene = SceneManager.GetActiveScene();
                 if (!activeScene.IsValid())
                 {
-                    Debug.LogError("[UnityCLI] No active scene to add canvas to");
+                    Debug.LogError($"[UnityCLI] ❌ ERROR: No valid scene available for canvas '{canvasName}'");
+                    Debug.LogError($"[UnityCLI]    └─ Target Scene: '{sceneName ?? "current"}'");
                     return false;
                 }
                 
-                // Create canvas GameObject - requires Unity UI package
+                // Create canvas GameObject
                 GameObject canvasGO = new GameObject(canvasName);
-                // Canvas canvas = canvasGO.AddComponent<Canvas>();
+                Canvas canvas = canvasGO.AddComponent<Canvas>();
+                CanvasScaler scaler = canvasGO.AddComponent<CanvasScaler>();
+                GraphicRaycaster raycaster = canvasGO.AddComponent<GraphicRaycaster>();
                 
-                Debug.Log($"[UnityCLI] Successfully created canvas '{canvasName}' with {renderMode} render mode");
+                // Set render mode
+                canvas.renderMode = ParseRenderMode(renderMode);
+                canvas.sortingOrder = sortingOrder;
+                
+                // Configure canvas scaler
+                scaler.uiScaleMode = ParseScaleMode(scaleMode);
+                scaler.referenceResolution = new Vector2(referenceWidth, referenceHeight);
+                scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+                scaler.matchWidthOrHeight = 0.5f;
+                
+                // Set world position for WorldSpace canvas
+                if (canvas.renderMode == RenderMode.WorldSpace && worldPosition.HasValue)
+                {
+                    canvasGO.transform.position = worldPosition.Value;
+                }
+                
+                // Create EventSystem if it doesn't exist
+                if (UnityEngine.Object.FindObjectOfType<UnityEngine.EventSystems.EventSystem>() == null)
+                {
+                    CreateEventSystem();
+                }
+                
+                // Log detailed success information
+                Debug.Log($"[UnityCLI] ✅ SUCCESS: Created canvas '{canvasName}'");
+                Debug.Log($"[UnityCLI]    └─ Render Mode: {renderMode}");
+                Debug.Log($"[UnityCLI]    └─ Resolution: {referenceWidth}x{referenceHeight}");
+                Debug.Log($"[UnityCLI]    └─ Scale Mode: {scaleMode}");
+                Debug.Log($"[UnityCLI]    └─ Sorting Order: {sortingOrder}");
+                Debug.Log($"[UnityCLI]    └─ Components: Canvas, CanvasScaler, GraphicRaycaster");
+                Debug.Log($"[UnityCLI]    └─ Hierarchy: {GetGameObjectPath(canvasGO)}");
                 return true;
             }
             catch (System.Exception e)
@@ -277,7 +314,6 @@ namespace UnityVibe.Editor
                 Debug.LogError($"[UnityCLI] Exception creating canvas: {e.Message}");
                 return false;
             }
-            */
         }
         
         /// <summary>
@@ -289,6 +325,223 @@ namespace UnityVibe.Editor
             eventSystemGO.AddComponent<UnityEngine.EventSystems.EventSystem>();
             eventSystemGO.AddComponent<UnityEngine.EventSystems.StandaloneInputModule>();
             Debug.Log("[UnityCLI] Created EventSystem for UI interaction");
+        }
+        
+        #endregion
+        
+        #region UI Element Creation Methods
+        
+        /// <summary>
+        /// Creates a UI panel with optional parent GameObject
+        /// </summary>
+        /// <param name="panelName">Name for the panel GameObject</param>
+        /// <param name="parentName">Name of parent GameObject (canvas or other UI element)</param>
+        /// <param name="sceneName">Name of scene to target (optional)</param>
+        /// <param name="width">Panel width (default: 200)</param>
+        /// <param name="height">Panel height (default: 200)</param>
+        /// <param name="anchorPreset">Anchor preset (default: MiddleCenter)</param>
+        /// <returns>True if panel was created successfully</returns>
+        public static bool AddPanel(
+            string panelName,
+            string parentName = null,
+            string sceneName = null,
+            float width = 200f,
+            float height = 200f,
+            string anchorPreset = "MiddleCenter")
+        {
+            try
+            {
+                // Load target scene if specified
+                if (!LoadTargetScene(sceneName))
+                {
+                    return false;
+                }
+                
+                // Find parent GameObject
+                GameObject parent = FindUIParent(parentName);
+                if (parent == null)
+                {
+                    Debug.LogError($"[UnityCLI] ❌ ERROR: Parent lookup failed for panel '{panelName}'");
+                    Debug.LogError($"[UnityCLI]    └─ Requested Parent: '{parentName ?? "auto-detect"}'");
+                    Debug.LogError($"[UnityCLI]    └─ Target Scene: '{sceneName ?? "current"}'");
+                    Debug.LogError($"[UnityCLI]    └─ Available GameObjects: {ListAvailableGameObjects()}");
+                    return false;
+                }
+                
+                // Create panel GameObject
+                GameObject panelGO = new GameObject(panelName);
+                panelGO.transform.SetParent(parent.transform, false);
+                
+                // Add UI components
+                Image panelImage = panelGO.AddComponent<Image>();
+                panelImage.color = new Color(1f, 1f, 1f, 0.392f); // Default panel background
+                
+                // Setup RectTransform
+                RectTransform rectTransform = panelGO.GetComponent<RectTransform>();
+                SetupRectTransform(rectTransform, width, height, anchorPreset);
+                
+                // Log detailed success information
+                Debug.Log($"[UnityCLI] ✅ SUCCESS: Created panel '{panelName}'");
+                Debug.Log($"[UnityCLI]    └─ Parent: {parent.name} (Type: {parent.GetComponent<Canvas>()?.GetType().Name ?? parent.GetType().Name})");
+                Debug.Log($"[UnityCLI]    └─ Components: Image (background)");
+                Debug.Log($"[UnityCLI]    └─ Size: {width}x{height}");
+                Debug.Log($"[UnityCLI]    └─ Anchor: {anchorPreset}");
+                Debug.Log($"[UnityCLI]    └─ Hierarchy: {GetGameObjectPath(panelGO)}");
+                return true;
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"[UnityCLI] Exception creating panel: {e.Message}");
+                return false;
+            }
+        }
+        
+        /// <summary>
+        /// Creates a UI button with optional parent GameObject
+        /// </summary>
+        /// <param name="buttonName">Name for the button GameObject</param>
+        /// <param name="parentName">Name of parent GameObject</param>
+        /// <param name="sceneName">Name of scene to target (optional)</param>
+        /// <param name="buttonText">Text to display on button</param>
+        /// <param name="width">Button width (default: 160)</param>
+        /// <param name="height">Button height (default: 30)</param>
+        /// <param name="anchorPreset">Anchor preset (default: MiddleCenter)</param>
+        /// <returns>True if button was created successfully</returns>
+        public static bool AddButton(
+            string buttonName,
+            string parentName = null,
+            string sceneName = null,
+            string buttonText = "Button",
+            float width = 160f,
+            float height = 30f,
+            string anchorPreset = "MiddleCenter")
+        {
+            try
+            {
+                // Load target scene if specified
+                if (!LoadTargetScene(sceneName))
+                {
+                    return false;
+                }
+                
+                // Find parent GameObject
+                GameObject parent = FindUIParent(parentName);
+                if (parent == null)
+                {
+                    Debug.LogError($"[UnityCLI] ❌ ERROR: Parent lookup failed for button '{buttonName}'");
+                    Debug.LogError($"[UnityCLI]    └─ Requested Parent: '{parentName ?? "auto-detect"}'");
+                    Debug.LogError($"[UnityCLI]    └─ Target Scene: '{sceneName ?? "current"}'");
+                    Debug.LogError($"[UnityCLI]    └─ Available GameObjects: {ListAvailableGameObjects()}");
+                    return false;
+                }
+                
+                // Create button GameObject
+                GameObject buttonGO = new GameObject(buttonName);
+                buttonGO.transform.SetParent(parent.transform, false);
+                
+                // Add button components
+                Image buttonImage = buttonGO.AddComponent<Image>();
+                Button button = buttonGO.AddComponent<Button>();
+                
+                // Setup RectTransform
+                RectTransform rectTransform = buttonGO.GetComponent<RectTransform>();
+                SetupRectTransform(rectTransform, width, height, anchorPreset);
+                
+                // Create text child
+                if (!string.IsNullOrEmpty(buttonText))
+                {
+                    CreateButtonText(buttonGO, buttonText);
+                }
+                
+                // Log detailed success information
+                Debug.Log($"[UnityCLI] ✅ SUCCESS: Created button '{buttonName}'");  
+                Debug.Log($"[UnityCLI]    └─ Parent: {parent.name} (Type: {parent.GetComponent<Canvas>()?.GetType().Name ?? parent.GetType().Name})");
+                Debug.Log($"[UnityCLI]    └─ Components: Image, Button");
+                Debug.Log($"[UnityCLI]    └─ Text: \"{buttonText}\"");
+                Debug.Log($"[UnityCLI]    └─ Size: {width}x{height}");
+                Debug.Log($"[UnityCLI]    └─ Anchor: {anchorPreset}");
+                Debug.Log($"[UnityCLI]    └─ Hierarchy: {GetGameObjectPath(buttonGO)}");
+                return true;
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"[UnityCLI] Exception creating button: {e.Message}");
+                return false;
+            }
+        }
+        
+        /// <summary>
+        /// Creates a UI text element with optional parent GameObject
+        /// </summary>
+        /// <param name="textName">Name for the text GameObject</param>
+        /// <param name="parentName">Name of parent GameObject</param>
+        /// <param name="sceneName">Name of scene to target (optional)</param>
+        /// <param name="textContent">Text content to display</param>
+        /// <param name="fontSize">Font size (default: 14)</param>
+        /// <param name="width">Text width (default: 200)</param>
+        /// <param name="height">Text height (default: 50)</param>
+        /// <param name="anchorPreset">Anchor preset (default: MiddleCenter)</param>
+        /// <returns>True if text was created successfully</returns>
+        public static bool AddText(
+            string textName,
+            string parentName = null,
+            string sceneName = null,
+            string textContent = "New Text",
+            int fontSize = 14,
+            float width = 200f,
+            float height = 50f,
+            string anchorPreset = "MiddleCenter")
+        {
+            try
+            {
+                // Load target scene if specified
+                if (!LoadTargetScene(sceneName))
+                {
+                    return false;
+                }
+                
+                // Find parent GameObject
+                GameObject parent = FindUIParent(parentName);
+                if (parent == null)
+                {
+                    Debug.LogError($"[UnityCLI] ❌ ERROR: Parent lookup failed for text '{textName}'");
+                    Debug.LogError($"[UnityCLI]    └─ Requested Parent: '{parentName ?? "auto-detect"}'");
+                    Debug.LogError($"[UnityCLI]    └─ Target Scene: '{sceneName ?? "current"}'");
+                    Debug.LogError($"[UnityCLI]    └─ Available GameObjects: {ListAvailableGameObjects()}");
+                    return false;
+                }
+                
+                // Create text GameObject
+                GameObject textGO = new GameObject(textName);
+                textGO.transform.SetParent(parent.transform, false);
+                
+                // Add text component
+                Text textComponent = textGO.AddComponent<Text>();
+                textComponent.text = textContent;
+                textComponent.fontSize = fontSize;
+                textComponent.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+                textComponent.alignment = TextAnchor.MiddleCenter;
+                
+                // Setup RectTransform
+                RectTransform rectTransform = textGO.GetComponent<RectTransform>();
+                SetupRectTransform(rectTransform, width, height, anchorPreset);
+                
+                // Log detailed success information
+                Debug.Log($"[UnityCLI] ✅ SUCCESS: Created text '{textName}'");
+                Debug.Log($"[UnityCLI]    └─ Parent: {parent.name} (Type: {parent.GetComponent<Canvas>()?.GetType().Name ?? parent.GetType().Name})");
+                Debug.Log($"[UnityCLI]    └─ Components: Text");
+                Debug.Log($"[UnityCLI]    └─ Content: \"{textContent}\"");
+                Debug.Log($"[UnityCLI]    └─ Font Size: {fontSize}px");
+                Debug.Log($"[UnityCLI]    └─ Size: {width}x{height}");
+                Debug.Log($"[UnityCLI]    └─ Anchor: {anchorPreset}");
+                Debug.Log($"[UnityCLI]    └─ Hierarchy: {GetGameObjectPath(textGO)}");
+                return true;
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"[UnityCLI] Exception creating text: {e.Message}");
+                return false;
+            }
         }
         
         #endregion
@@ -317,15 +570,26 @@ namespace UnityVibe.Editor
             }
         }
         
-        // Canvas helper methods disabled - require Unity UI package
-        /*
         /// <summary>
         /// Parses string render mode to Unity enum
         /// </summary>
         private static RenderMode ParseRenderMode(string renderMode)
         {
-            // Implementation commented out - requires Unity UI package
-            return RenderMode.ScreenSpaceOverlay;
+            switch (renderMode.ToLower())
+            {
+                case "screenspaceoverlay":
+                case "overlay":
+                    return RenderMode.ScreenSpaceOverlay;
+                case "screenspacecamera":
+                case "camera":
+                    return RenderMode.ScreenSpaceCamera;
+                case "worldspace":
+                case "world":
+                    return RenderMode.WorldSpace;
+                default:
+                    Debug.LogWarning($"[UnityCLI] Unknown render mode '{renderMode}', using ScreenSpaceOverlay");
+                    return RenderMode.ScreenSpaceOverlay;
+            }
         }
         
         /// <summary>
@@ -333,10 +597,302 @@ namespace UnityVibe.Editor
         /// </summary>
         private static CanvasScaler.ScaleMode ParseScaleMode(string scaleMode)
         {
-            // Implementation commented out - requires Unity UI package
-            return CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            switch (scaleMode.ToLower())
+            {
+                case "constantpixelsize":
+                case "constant":
+                    return CanvasScaler.ScaleMode.ConstantPixelSize;
+                case "scalewithscreensize":
+                case "scale":
+                    return CanvasScaler.ScaleMode.ScaleWithScreenSize;
+                case "constantphysicalsize":
+                case "physical":
+                    return CanvasScaler.ScaleMode.ConstantPhysicalSize;
+                default:
+                    Debug.LogWarning($"[UnityCLI] Unknown scale mode '{scaleMode}', using ScaleWithScreenSize");
+                    return CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            }
         }
-        */
+        
+        /// <summary>
+        /// Finds a UI parent GameObject by name in the active scene
+        /// </summary>
+        private static GameObject FindUIParent(string parentName)
+        {
+            if (string.IsNullOrEmpty(parentName))
+            {
+                // If no parent specified, try to find the first canvas
+                Canvas canvas = UnityEngine.Object.FindObjectOfType<Canvas>();
+                if (canvas != null)
+                {
+                    return canvas.gameObject;
+                }
+                Debug.LogError("[UnityCLI] No parent specified and no canvas found in scene");
+                return null;
+            }
+            
+            // Search for GameObject by name in active scene
+            Scene activeScene = SceneManager.GetActiveScene();
+            GameObject[] rootObjects = activeScene.GetRootGameObjects();
+            
+            foreach (GameObject rootObj in rootObjects)
+            {
+                GameObject found = FindGameObjectRecursive(rootObj, parentName);
+                if (found != null)
+                {
+                    return found;
+                }
+            }
+            
+            Debug.LogError($"[UnityCLI] Parent GameObject '{parentName}' not found in active scene");
+            return null;
+        }
+        
+        /// <summary>
+        /// Recursively searches for a GameObject by name
+        /// </summary>
+        private static GameObject FindGameObjectRecursive(GameObject parent, string targetName)
+        {
+            if (parent.name == targetName)
+                return parent;
+                
+            for (int i = 0; i < parent.transform.childCount; i++)
+            {
+                GameObject found = FindGameObjectRecursive(parent.transform.GetChild(i).gameObject, targetName);
+                if (found != null)
+                    return found;
+            }
+            
+            return null;
+        }
+        
+        /// <summary>
+        /// Sets up RectTransform properties for UI elements
+        /// </summary>
+        private static void SetupRectTransform(RectTransform rectTransform, float width, float height, string anchorPreset)
+        {
+            // Set anchor preset
+            switch (anchorPreset.ToLower())
+            {
+                case "topleft":
+                    rectTransform.anchorMin = new Vector2(0f, 1f);
+                    rectTransform.anchorMax = new Vector2(0f, 1f);
+                    rectTransform.pivot = new Vector2(0f, 1f);
+                    break;
+                case "topcenter":
+                    rectTransform.anchorMin = new Vector2(0.5f, 1f);
+                    rectTransform.anchorMax = new Vector2(0.5f, 1f);
+                    rectTransform.pivot = new Vector2(0.5f, 1f);
+                    break;
+                case "topright":
+                    rectTransform.anchorMin = new Vector2(1f, 1f);
+                    rectTransform.anchorMax = new Vector2(1f, 1f);
+                    rectTransform.pivot = new Vector2(1f, 1f);
+                    break;
+                case "middleleft":
+                    rectTransform.anchorMin = new Vector2(0f, 0.5f);
+                    rectTransform.anchorMax = new Vector2(0f, 0.5f);
+                    rectTransform.pivot = new Vector2(0f, 0.5f);
+                    break;
+                case "middlecenter":
+                default:
+                    rectTransform.anchorMin = new Vector2(0.5f, 0.5f);
+                    rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
+                    rectTransform.pivot = new Vector2(0.5f, 0.5f);
+                    break;
+                case "middleright":
+                    rectTransform.anchorMin = new Vector2(1f, 0.5f);
+                    rectTransform.anchorMax = new Vector2(1f, 0.5f);
+                    rectTransform.pivot = new Vector2(1f, 0.5f);
+                    break;
+                case "bottomleft":
+                    rectTransform.anchorMin = new Vector2(0f, 0f);
+                    rectTransform.anchorMax = new Vector2(0f, 0f);
+                    rectTransform.pivot = new Vector2(0f, 0f);
+                    break;
+                case "bottomcenter":
+                    rectTransform.anchorMin = new Vector2(0.5f, 0f);
+                    rectTransform.anchorMax = new Vector2(0.5f, 0f);
+                    rectTransform.pivot = new Vector2(0.5f, 0f);
+                    break;
+                case "bottomright":
+                    rectTransform.anchorMin = new Vector2(1f, 0f);
+                    rectTransform.anchorMax = new Vector2(1f, 0f);
+                    rectTransform.pivot = new Vector2(1f, 0f);
+                    break;
+            }
+            
+            // Set size
+            rectTransform.sizeDelta = new Vector2(width, height);
+            rectTransform.anchoredPosition = Vector2.zero;
+        }
+        
+        /// <summary>
+        /// Creates text child for button GameObject
+        /// </summary>
+        private static void CreateButtonText(GameObject buttonParent, string textContent)
+        {
+            GameObject textGO = new GameObject("Text");
+            textGO.transform.SetParent(buttonParent.transform, false);
+            
+            Text textComponent = textGO.AddComponent<Text>();
+            textComponent.text = textContent;
+            textComponent.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            textComponent.fontSize = 14;
+            textComponent.alignment = TextAnchor.MiddleCenter;
+            textComponent.color = Color.black;
+            
+            // Setup RectTransform to fill button
+            RectTransform textRect = textGO.GetComponent<RectTransform>();
+            textRect.anchorMin = Vector2.zero;
+            textRect.anchorMax = Vector2.one;
+            textRect.sizeDelta = Vector2.zero;
+            textRect.anchoredPosition = Vector2.zero;
+        }
+        
+        /// <summary>
+        /// Gets the full hierarchy path of a GameObject
+        /// </summary>
+        private static string GetGameObjectPath(GameObject gameObject)
+        {
+            string path = gameObject.name;
+            Transform parent = gameObject.transform.parent;
+            
+            while (parent != null)
+            {
+                path = parent.name + "/" + path;
+                parent = parent.parent;
+            }
+            
+            return path;
+        }
+        
+        /// <summary>
+        /// Lists available GameObjects in the scene for error reporting
+        /// </summary>
+        private static string ListAvailableGameObjects()
+        {
+            Scene activeScene = SceneManager.GetActiveScene();
+            GameObject[] rootObjects = activeScene.GetRootGameObjects();
+            var gameObjectNames = new List<string>();
+            
+            foreach (GameObject rootObj in rootObjects)
+            {
+                CollectGameObjectNames(rootObj, gameObjectNames, "");
+            }
+            
+            return string.Join(", ", gameObjectNames.Take(10)) + (gameObjectNames.Count > 10 ? "..." : "");
+        }
+        
+        /// <summary>
+        /// Recursively collects GameObject names for error reporting
+        /// </summary>
+        private static void CollectGameObjectNames(GameObject parent, List<string> names, string prefix)
+        {
+            names.Add(prefix + parent.name);
+            
+            for (int i = 0; i < parent.transform.childCount && names.Count < 15; i++)
+            {
+                CollectGameObjectNames(parent.transform.GetChild(i).gameObject, names, prefix + "  ");
+            }
+        }
+        
+        /// <summary>
+        /// Loads the target scene if specified, otherwise uses current scene
+        /// </summary>
+        private static bool LoadTargetScene(string sceneName)
+        {
+            if (string.IsNullOrEmpty(sceneName))
+            {
+                Debug.Log($"[UnityCLI] Using current active scene: {SceneManager.GetActiveScene().name}");
+                return true;
+            }
+            
+            // Try to find scene by name
+            string scenePath = FindSceneAsset(sceneName);
+            if (string.IsNullOrEmpty(scenePath))
+            {
+                Debug.LogError($"[UnityCLI] ❌ ERROR: Scene '{sceneName}' not found");
+                Debug.LogError($"[UnityCLI]    └─ Available scenes: {ListAvailableScenes()}");
+                return false;
+            }
+            
+            try
+            {
+                Scene targetScene = EditorSceneManager.OpenScene(scenePath);
+                if (targetScene.IsValid())
+                {
+                    Debug.Log($"[UnityCLI] ✅ Loaded target scene: {sceneName} ({scenePath})");
+                    return true;
+                }
+                else
+                {
+                    Debug.LogError($"[UnityCLI] ❌ ERROR: Failed to load scene '{sceneName}'");
+                    return false;
+                }
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"[UnityCLI] ❌ ERROR: Exception loading scene '{sceneName}': {e.Message}");
+                return false;
+            }
+        }
+        
+        /// <summary>
+        /// Finds scene asset path by name
+        /// </summary>
+        private static string FindSceneAsset(string sceneName)
+        {
+            // Add .unity extension if not present
+            if (!sceneName.EndsWith(".unity"))
+            {
+                sceneName += ".unity";
+            }
+            
+            // Search in common scene directories
+            string[] searchPaths = {
+                $"Assets/Scenes/{sceneName}",
+                $"Assets/{sceneName}",
+                $"Assets/Scenes/Game/{sceneName}",
+                $"Assets/Scenes/UI/{sceneName}",
+                $"Assets/Game/Scenes/{sceneName}"
+            };
+            
+            foreach (string path in searchPaths)
+            {
+                if (System.IO.File.Exists(path))
+                {
+                    return path;
+                }
+            }
+            
+            // Try AssetDatabase search as fallback
+            string[] guids = AssetDatabase.FindAssets($"t:Scene {sceneName.Replace(".unity", "")}");
+            if (guids.Length > 0)
+            {
+                return AssetDatabase.GUIDToAssetPath(guids[0]);
+            }
+            
+            return null;
+        }
+        
+        /// <summary>
+        /// Lists available scenes for error reporting
+        /// </summary>
+        private static string ListAvailableScenes()
+        {
+            string[] sceneGuids = AssetDatabase.FindAssets("t:Scene");
+            var sceneNames = new List<string>();
+            
+            foreach (string guid in sceneGuids)
+            {
+                string path = AssetDatabase.GUIDToAssetPath(guid);
+                string sceneName = System.IO.Path.GetFileNameWithoutExtension(path);
+                sceneNames.Add(sceneName);
+            }
+            
+            return string.Join(", ", sceneNames.Take(10)) + (sceneNames.Count > 10 ? "..." : "");
+        }
         
         /// <summary>
         /// Gets list of available scene types
@@ -482,29 +1038,33 @@ namespace UnityVibe.Editor
         
         /// <summary>
         /// Command line entry point for canvas creation
-        /// Usage: Unity -batchmode -quit -executeMethod UnityVibe.Editor.CLI.AddCanvasFromCommandLine canvas_name render_mode [width] [height] [scale_mode]
+        /// Usage: Unity -batchmode -quit -executeMethod UnityVibe.Editor.CLI.AddCanvasFromCommandLine canvas_name [scene_name] render_mode [width] [height] [scale_mode]
         /// </summary>
         public static void AddCanvasFromCommandLine()
         {
             string[] args = System.Environment.GetCommandLineArgs();
             
             int executeMethodIndex = System.Array.FindIndex(args, arg => arg == "-executeMethod");
-            if (executeMethodIndex == -1 || executeMethodIndex + 3 >= args.Length)
+            if (executeMethodIndex == -1 || executeMethodIndex + 2 >= args.Length)
             {
-                Debug.LogError("[UnityCLI] Invalid arguments. Usage: canvas_name render_mode [width] [height] [scale_mode]");
+                Debug.LogError("[UnityCLI] Invalid arguments. Usage: canvas_name [scene_name] render_mode [width] [height] [scale_mode]");
                 Debug.LogError("[UnityCLI] Render modes: ScreenSpaceOverlay, ScreenSpaceCamera, WorldSpace");
                 return;
             }
             
             string canvasName = args[executeMethodIndex + 2];
-            string renderMode = args[executeMethodIndex + 3];
-            int width = args.Length > executeMethodIndex + 4 ? int.Parse(args[executeMethodIndex + 4]) : 1920;
-            int height = args.Length > executeMethodIndex + 5 ? int.Parse(args[executeMethodIndex + 5]) : 1080;
-            string scaleMode = args.Length > executeMethodIndex + 6 ? args[executeMethodIndex + 6] : "ScaleWithScreenSize";
+            string sceneName = args.Length > executeMethodIndex + 3 ? args[executeMethodIndex + 3] : null;
+            string renderMode = args.Length > executeMethodIndex + 4 ? args[executeMethodIndex + 4] : "ScreenSpaceOverlay";
+            int width = args.Length > executeMethodIndex + 5 ? int.Parse(args[executeMethodIndex + 5]) : 1920;
+            int height = args.Length > executeMethodIndex + 6 ? int.Parse(args[executeMethodIndex + 6]) : 1080;
+            string scaleMode = args.Length > executeMethodIndex + 7 ? args[executeMethodIndex + 7] : "ScaleWithScreenSize";
             
-            Debug.Log($"[UnityCLI] Adding canvas: {canvasName} ({renderMode}, {width}x{height})");
+            // Handle empty string as null for optional parameters
+            if (string.IsNullOrEmpty(sceneName)) sceneName = null;
             
-            bool success = AddCanvas(canvasName, renderMode, width, height, scaleMode);
+            Debug.Log($"[UnityCLI] Adding canvas: {canvasName} in scene {sceneName ?? "current"} ({renderMode}, {width}x{height})");
+            
+            bool success = AddCanvas(canvasName, sceneName, renderMode, width, height, scaleMode);
             
             if (success)
             {
@@ -529,6 +1089,135 @@ namespace UnityVibe.Editor
             Debug.Log("[UnityCLI] === Available Scene Types ===");
             ListSceneTypes();
             Debug.Log("[UnityCLI] ===========================");
+        }
+        
+        /// <summary>
+        /// Command line entry point for adding UI panels
+        /// Usage: Unity -batchmode -quit -executeMethod UnityVibe.Editor.CLI.AddPanelFromCommandLine panel_name [parent_name] [scene_name] [width] [height] [anchor_preset]
+        /// </summary>
+        public static void AddPanelFromCommandLine()
+        {
+            string[] args = System.Environment.GetCommandLineArgs();
+            
+            int executeMethodIndex = System.Array.FindIndex(args, arg => arg == "-executeMethod");
+            if (executeMethodIndex == -1 || executeMethodIndex + 2 >= args.Length)
+            {
+                Debug.LogError("[UnityCLI] Invalid arguments. Usage: panel_name [parent_name] [scene_name] [width] [height] [anchor_preset]");
+                return;
+            }
+            
+            string panelName = args[executeMethodIndex + 2];
+            string parentName = args.Length > executeMethodIndex + 3 ? args[executeMethodIndex + 3] : null;
+            string sceneName = args.Length > executeMethodIndex + 4 ? args[executeMethodIndex + 4] : null;
+            float width = args.Length > executeMethodIndex + 5 ? float.Parse(args[executeMethodIndex + 5]) : 200f;
+            float height = args.Length > executeMethodIndex + 6 ? float.Parse(args[executeMethodIndex + 6]) : 200f;
+            string anchorPreset = args.Length > executeMethodIndex + 7 ? args[executeMethodIndex + 7] : "MiddleCenter";
+            
+            // Handle empty string as null for optional parameters
+            if (string.IsNullOrEmpty(parentName)) parentName = null;
+            if (string.IsNullOrEmpty(sceneName)) sceneName = null;
+            
+            Debug.Log($"[UnityCLI] Adding panel: {panelName} under {parentName ?? "default canvas"} in scene {sceneName ?? "current"}");
+            
+            bool success = AddPanel(panelName, parentName, sceneName, width, height, anchorPreset);
+            
+            if (success)
+            {
+                Debug.Log($"[UnityCLI] ✅ Successfully added panel: {panelName}");
+                UnityEditor.SceneManagement.EditorSceneManager.SaveOpenScenes();
+            }
+            else
+            {
+                Debug.LogError($"[UnityCLI] ❌ Failed to add panel");
+                UnityEditor.EditorApplication.Exit(1);
+            }
+        }
+        
+        /// <summary>
+        /// Command line entry point for adding UI buttons
+        /// Usage: Unity -batchmode -quit -executeMethod UnityVibe.Editor.CLI.AddButtonFromCommandLine button_name [parent_name] [scene_name] [button_text] [width] [height] [anchor_preset]
+        /// </summary>
+        public static void AddButtonFromCommandLine()
+        {
+            string[] args = System.Environment.GetCommandLineArgs();
+            
+            int executeMethodIndex = System.Array.FindIndex(args, arg => arg == "-executeMethod");
+            if (executeMethodIndex == -1 || executeMethodIndex + 2 >= args.Length)
+            {
+                Debug.LogError("[UnityCLI] Invalid arguments. Usage: button_name [parent_name] [scene_name] [button_text] [width] [height] [anchor_preset]");
+                return;
+            }
+            
+            string buttonName = args[executeMethodIndex + 2];
+            string parentName = args.Length > executeMethodIndex + 3 ? args[executeMethodIndex + 3] : null;
+            string sceneName = args.Length > executeMethodIndex + 4 ? args[executeMethodIndex + 4] : null;
+            string buttonText = args.Length > executeMethodIndex + 5 ? args[executeMethodIndex + 5] : "Button";
+            float width = args.Length > executeMethodIndex + 6 ? float.Parse(args[executeMethodIndex + 6]) : 160f;
+            float height = args.Length > executeMethodIndex + 7 ? float.Parse(args[executeMethodIndex + 7]) : 30f;
+            string anchorPreset = args.Length > executeMethodIndex + 8 ? args[executeMethodIndex + 8] : "MiddleCenter";
+            
+            // Handle empty string as null for optional parameters
+            if (string.IsNullOrEmpty(parentName)) parentName = null;
+            if (string.IsNullOrEmpty(sceneName)) sceneName = null;
+            
+            Debug.Log($"[UnityCLI] Adding button: {buttonName} under {parentName ?? "default canvas"} in scene {sceneName ?? "current"}");
+            
+            bool success = AddButton(buttonName, parentName, sceneName, buttonText, width, height, anchorPreset);
+            
+            if (success)
+            {
+                Debug.Log($"[UnityCLI] ✅ Successfully added button: {buttonName}");
+                UnityEditor.SceneManagement.EditorSceneManager.SaveOpenScenes();
+            }
+            else
+            {
+                Debug.LogError($"[UnityCLI] ❌ Failed to add button");
+                UnityEditor.EditorApplication.Exit(1);
+            }
+        }
+        
+        /// <summary>
+        /// Command line entry point for adding UI text
+        /// Usage: Unity -batchmode -quit -executeMethod UnityVibe.Editor.CLI.AddTextFromCommandLine text_name [parent_name] [scene_name] [text_content] [font_size] [width] [height] [anchor_preset]
+        /// </summary>
+        public static void AddTextFromCommandLine()
+        {
+            string[] args = System.Environment.GetCommandLineArgs();
+            
+            int executeMethodIndex = System.Array.FindIndex(args, arg => arg == "-executeMethod");
+            if (executeMethodIndex == -1 || executeMethodIndex + 2 >= args.Length)
+            {
+                Debug.LogError("[UnityCLI] Invalid arguments. Usage: text_name [parent_name] [scene_name] [text_content] [font_size] [width] [height] [anchor_preset]");
+                return;
+            }
+            
+            string textName = args[executeMethodIndex + 2];
+            string parentName = args.Length > executeMethodIndex + 3 ? args[executeMethodIndex + 3] : null;
+            string sceneName = args.Length > executeMethodIndex + 4 ? args[executeMethodIndex + 4] : null;
+            string textContent = args.Length > executeMethodIndex + 5 ? args[executeMethodIndex + 5] : "New Text";
+            int fontSize = args.Length > executeMethodIndex + 6 ? int.Parse(args[executeMethodIndex + 6]) : 14;
+            float width = args.Length > executeMethodIndex + 7 ? float.Parse(args[executeMethodIndex + 7]) : 200f;
+            float height = args.Length > executeMethodIndex + 8 ? float.Parse(args[executeMethodIndex + 8]) : 50f;
+            string anchorPreset = args.Length > executeMethodIndex + 9 ? args[executeMethodIndex + 9] : "MiddleCenter";
+            
+            // Handle empty string as null for optional parameters
+            if (string.IsNullOrEmpty(parentName)) parentName = null;
+            if (string.IsNullOrEmpty(sceneName)) sceneName = null;
+            
+            Debug.Log($"[UnityCLI] Adding text: {textName} under {parentName ?? "default canvas"} in scene {sceneName ?? "current"}");
+            
+            bool success = AddText(textName, parentName, sceneName, textContent, fontSize, width, height, anchorPreset);
+            
+            if (success)
+            {
+                Debug.Log($"[UnityCLI] ✅ Successfully added text: {textName}");
+                UnityEditor.SceneManagement.EditorSceneManager.SaveOpenScenes();
+            }
+            else
+            {
+                Debug.LogError($"[UnityCLI] ❌ Failed to add text");
+                UnityEditor.EditorApplication.Exit(1);
+            }
         }
         
         /// <summary>
@@ -610,7 +1299,7 @@ namespace UnityVibe.Editor
             ListSceneTypes();
             
             // Test canvas creation in current scene
-            bool canvasSuccess = AddCanvas("TestCanvas", "ScreenSpaceOverlay", 1920, 1080, "ScaleWithScreenSize");
+            bool canvasSuccess = AddCanvas("TestCanvas", null, "ScreenSpaceOverlay", 1920, 1080, "ScaleWithScreenSize");
             if (canvasSuccess)
             {
                 Debug.Log("[UnityCLI Test] ✅ Canvas creation successful");

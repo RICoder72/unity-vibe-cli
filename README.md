@@ -10,12 +10,16 @@ A powerful Command Line Interface tool for Unity development workflow automation
 
 - **CLI-based Scene Creation**: Create Unity scenes using command line with various templates
 - **Canvas Management**: Add and configure UI canvases with customizable parameters
+- **Hierarchical UI Creation**: Create complex UI hierarchies with parent-child relationships
+- **Scene Context Management**: Target specific scenes with `--scene` parameter
+- **Process Management**: Check and kill Unity processes blocking CLI operations
 - **WSL Integration**: Native Windows Subsystem for Linux support with bash scripts
 - **Scene Template Support**: Works with Unity's built-in scene templates
 - **Build Settings Integration**: Automatically add created scenes to build settings
 - **Extensible Architecture**: Easy to extend with new CLI commands
 - **Cross-Platform**: Works on Windows, macOS, and Linux
 - **No External Dependencies**: Uses only Unity's native APIs
+- **Detailed Error Reporting**: Machine-readable output with comprehensive diagnostics
 
 ## 📦 Installation
 

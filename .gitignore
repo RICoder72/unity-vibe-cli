@@ -137,3 +137,6 @@ sysinfo.txt
 # Unity Crash Reports
 crash.log*
 crash.dmp*
+
+# Unity Vibe CLI command queue
+.vibe-commands/

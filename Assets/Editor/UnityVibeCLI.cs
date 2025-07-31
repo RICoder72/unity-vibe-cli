@@ -113,6 +113,7 @@ using UnityEngine.UI;
 using System.IO;
 using System.Collections.Generic;
 using System.Linq;
+using System;
 
 namespace UnityVibe.Editor
 {
@@ -341,7 +342,7 @@ namespace UnityVibe.Editor
                 }
                 
                 // Create EventSystem if it doesn't exist
-                if (UnityEngine.Object.FindObjectOfType<UnityEngine.EventSystems.EventSystem>() == null)
+                if (UnityEngine.Object.FindFirstObjectByType<UnityEngine.EventSystems.EventSystem>() == null)
                 {
                     CreateEventSystem();
                 }
@@ -669,7 +670,7 @@ namespace UnityVibe.Editor
             if (string.IsNullOrEmpty(parentName))
             {
                 // If no parent specified, try to find the first canvas
-                Canvas canvas = UnityEngine.Object.FindObjectOfType<Canvas>();
+                Canvas canvas = UnityEngine.Object.FindFirstObjectByType<Canvas>();
                 if (canvas != null)
                 {
                     return canvas.gameObject;
@@ -1663,6 +1664,134 @@ namespace UnityVibe.Editor
             Debug.Log("[UnityCLI] Available Render Modes: ScreenSpaceOverlay, ScreenSpaceCamera, WorldSpace");
             Debug.Log("[UnityCLI] Available Scale Modes: ConstantPixelSize, ScaleWithScreenSize, ConstantPhysicalSize");
             Debug.Log("[UnityCLI] ===============================");
+        }
+        
+        #endregion
+        
+        #region File Watcher System
+        
+        /// <summary>
+        /// Directory where CLI drops command files for Unity to pick up
+        /// </summary>
+        private static readonly string COMMAND_QUEUE_DIR = Path.Combine(Application.dataPath, "..", ".vibe-commands");
+        
+        /// <summary>
+        /// Initialize the file watcher system
+        /// </summary>
+        [InitializeOnLoadMethod]
+        private static void InitializeFileWatcher()
+        {
+            // Ensure command queue directory exists
+            if (!Directory.Exists(COMMAND_QUEUE_DIR))
+            {
+                Directory.CreateDirectory(COMMAND_QUEUE_DIR);
+            }
+            
+            // Start watching for command files
+            EditorApplication.update += CheckForCommandFiles;
+            
+            Debug.Log("[UnityCLI] File watcher initialized. Watching: " + COMMAND_QUEUE_DIR);
+        }
+        
+        /// <summary>
+        /// Check for new command files and execute them
+        /// </summary>
+        private static void CheckForCommandFiles()
+        {
+            try
+            {
+                if (!Directory.Exists(COMMAND_QUEUE_DIR))
+                    return;
+                
+                string[] commandFiles = Directory.GetFiles(COMMAND_QUEUE_DIR, "*.json");
+                
+                foreach (string filePath in commandFiles)
+                {
+                    // Skip if file is being written (check if locked)
+                    if (IsFileLocked(filePath))
+                        continue;
+                    
+                    Debug.Log($"[UnityCLI] Found command file: {Path.GetFileName(filePath)}");
+                    
+                    // Execute the batch file
+                    bool success = ExecuteBatchFile(filePath);
+                    
+                    // Move file to processed directory or delete it
+                    string processedDir = Path.Combine(COMMAND_QUEUE_DIR, "processed");
+                    if (!Directory.Exists(processedDir))
+                        Directory.CreateDirectory(processedDir);
+                    
+                    string timestamp = DateTime.Now.ToString("yyyyMMdd-HHmmss");
+                    string processedPath = Path.Combine(processedDir, $"{timestamp}-{Path.GetFileName(filePath)}");
+                    
+                    try
+                    {
+                        File.Move(filePath, processedPath);
+                        Debug.Log($"[UnityCLI] Command file processed and moved to: {processedPath}");
+                    }
+                    catch (Exception e)
+                    {
+                        Debug.LogWarning($"[UnityCLI] Could not move processed file: {e.Message}");
+                        // Try to delete instead
+                        try
+                        {
+                            File.Delete(filePath);
+                            Debug.Log($"[UnityCLI] Command file deleted: {Path.GetFileName(filePath)}");
+                        }
+                        catch
+                        {
+                            Debug.LogError($"[UnityCLI] Could not delete command file: {filePath}");
+                        }
+                    }
+                    
+                    if (success)
+                    {
+                        Debug.Log("[UnityCLI] ✅ File watcher command executed successfully");
+                    }
+                    else
+                    {
+                        Debug.LogError("[UnityCLI] ❌ File watcher command execution failed");
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[UnityCLI] Error in file watcher: {e.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// Check if a file is currently locked (being written to)
+        /// </summary>
+        private static bool IsFileLocked(string filePath)
+        {
+            try
+            {
+                using (FileStream stream = File.Open(filePath, FileMode.Open, FileAccess.Read, FileShare.None))
+                {
+                    return false;
+                }
+            }
+            catch (IOException)
+            {
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+        
+        /// <summary>
+        /// Menu item to toggle file watcher
+        /// </summary>
+        [MenuItem("Tools/Unity Vibe CLI/Toggle File Watcher", priority = 420)]
+        private static void ToggleFileWatcher()
+        {
+            // For now, just show status
+            EditorUtility.DisplayDialog("File Watcher Status", 
+                $"File watcher is active.\nWatching: {COMMAND_QUEUE_DIR}\n\nDrop JSON command files here for automatic execution.", 
+                "OK");
         }
         
         #endregion

@@ -1363,10 +1363,20 @@ show_batch_file_help() {
     echo "    add-button      Add UI button"
     echo "    add-text        Add UI text element"
     echo ""
+    echo "EXECUTION MODES:"
+    echo "    Unity Closed: Uses batch mode (-batchmode -quit)"
+    echo "    Unity Open:   Uses file watcher system (no conflicts!)"
+    echo ""
     echo "EXAMPLES:"
     echo "    vibe-unity batch-file ui-setup.json"
     echo "    vibe-unity batch-file menu-ui.json --dry-run"
     echo "    vibe-unity batch-file batch.json --validate-only"
+    echo ""
+    echo "UNITY OPEN WORKFLOW:"
+    echo "    1. CLI detects Unity is running"
+    echo "    2. Copies JSON to .vibe-commands/ queue directory"  
+    echo "    3. Unity file watcher automatically executes commands"
+    echo "    4. Check Unity Console for execution status"
     echo ""
     echo "See batch-schema.json for complete schema documentation."
 }
@@ -1479,16 +1489,40 @@ cmd_batch_file() {
     fi
     
     if [[ "$unity_running" == "true" ]]; then
-        echo "🔄 Unity is running - executing batch in editor mode"
-        # Execute in editor mode (no -batchmode -quit)
-        "$UNITY_PATH" \
-            -projectPath "$(get_project_path)" \
-            -executeMethod UnityVibe.Editor.CLI.ExecuteBatchFromCommandLine \
-            "$json_file" &
+        echo "🔄 Unity is running - using file watcher system"
         
-        # Wait for execution to complete
-        sleep 3
-        local exit_code=0
+        # Create command queue directory if it doesn't exist
+        local command_dir="$(get_project_path)/.vibe-commands"
+        mkdir -p "$command_dir"
+        
+        # Generate unique filename with timestamp
+        local timestamp=$(date +%Y%m%d-%H%M%S-%N)
+        local queue_file="$command_dir/batch-$timestamp.json"
+        
+        # Copy JSON file to command queue
+        cp "$json_file" "$queue_file"
+        
+        echo "📁 Command file queued: $(basename "$queue_file")"
+        echo "🔍 Unity will automatically execute this file"
+        echo "💡 Check Unity Console for execution status"
+        
+        # Wait a moment for Unity to pick up the file
+        sleep 2
+        
+        # Check if file was processed (moved or deleted)
+        local wait_count=0
+        while [[ -f "$queue_file" && $wait_count -lt 30 ]]; do
+            sleep 1
+            ((wait_count++))
+        done
+        
+        if [[ ! -f "$queue_file" ]]; then
+            echo "✅ Command file processed by Unity"
+            local exit_code=0
+        else
+            echo "⚠️  Command file still in queue (Unity may be processing)"
+            local exit_code=0
+        fi
     else
         echo "🔄 Unity not running - executing batch in batch mode"
         # Execute in batch mode

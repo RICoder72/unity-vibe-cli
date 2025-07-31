@@ -1,6 +1,6 @@
 #region File Documentation
 /// <summary>
-/// UNITYVIBECLI.CS - Command Line Interface Tools for Unity Development
+/// VIBEUNITYCLI.CS - Command Line Interface Tools for Unity Development
 /// 
 /// PURPOSE:
 /// Provides CLI-based tools for Unity development workflow automation including scene creation,
@@ -24,13 +24,13 @@
 /// Create scenes using Unity's built-in scene templates:
 /// 
 /// // Create empty scene
-/// UnityVibe.CLI.CreateScene("MyScene", "Assets/Scenes", "Empty");
+/// VibeUnity.CLI.CreateScene("MyScene", "Assets/Scenes", "Empty");
 /// 
 /// // Create scene with default GameObjects
-/// UnityVibe.CLI.CreateScene("GameScene", "Assets/Scenes/Game", "DefaultGameObjects");
+/// VibeUnity.CLI.CreateScene("GameScene", "Assets/Scenes/Game", "DefaultGameObjects");
 /// 
 /// // Create scene with specific template
-/// UnityVibe.CLI.CreateScene("UIScene", "Assets/Scenes/UI", "2D");
+/// VibeUnity.CLI.CreateScene("UIScene", "Assets/Scenes/UI", "2D");
 /// 
 /// Available Scene Types (use --listtypes to see current install):
 /// • Empty - Completely empty scene
@@ -46,7 +46,7 @@
 /// -----------------
 /// Get available scene types for current Unity installation:
 /// 
-/// UnityVibe.CLI.ListSceneTypes();
+/// VibeUnity.CLI.ListSceneTypes();
 /// // Output: Available scene types: Empty, DefaultGameObjects, 2D, 3D, URP, HDRP
 /// 
 /// CANVAS CREATION:
@@ -54,13 +54,13 @@
 /// Add canvas to existing scene with configurable parameters:
 /// 
 /// // Basic canvas
-/// UnityVibe.CLI.AddCanvas("MyCanvas", "ScreenSpaceOverlay");
+/// VibeUnity.CLI.AddCanvas("MyCanvas", "ScreenSpaceOverlay");
 /// 
 /// // Canvas with custom settings
-/// UnityVibe.CLI.AddCanvas("UICanvas", "ScreenSpaceOverlay", 1920, 1080, "ScaleWithScreenSize");
+/// VibeUnity.CLI.AddCanvas("UICanvas", "ScreenSpaceOverlay", 1920, 1080, "ScaleWithScreenSize");
 /// 
 /// // World space canvas
-/// UnityVibe.CLI.AddCanvas("WorldCanvas", "WorldSpace", 100, 100);
+/// VibeUnity.CLI.AddCanvas("WorldCanvas", "WorldSpace", 100, 100);
 /// 
 /// Canvas Parameters:
 /// • canvasName: Name for the canvas GameObject
@@ -76,16 +76,16 @@
 /// 
 /// BATCH SCENE CREATION:
 /// foreach(string sceneName in sceneList) {
-///     UnityVibe.CLI.CreateScene(sceneName, basePath, "DefaultGameObjects");
+///     VibeUnity.CLI.CreateScene(sceneName, basePath, "DefaultGameObjects");
 /// }
 /// 
 /// AUTOMATED SETUP:
-/// UnityVibe.CLI.CreateScene("MainMenu", "Assets/Scenes/UI", "2D");
-/// UnityVibe.CLI.AddCanvas("MenuCanvas", "ScreenSpaceOverlay", 1920, 1080, "ScaleWithScreenSize");
+/// VibeUnity.CLI.CreateScene("MainMenu", "Assets/Scenes/UI", "2D");
+/// VibeUnity.CLI.AddCanvas("MenuCanvas", "ScreenSpaceOverlay", 1920, 1080, "ScaleWithScreenSize");
 /// 
 /// EXTERNAL SCRIPT INTEGRATION:
 /// // Call from external tools or build scripts
-/// var cliType = System.Type.GetType("UnityVibe.Editor.CLI");
+/// var cliType = System.Type.GetType("VibeUnity.Editor.CLI");
 /// var createMethod = cliType.GetMethod("CreateScene");
 /// createMethod.Invoke(null, new object[] { "TestScene", "Assets/Testing", "Empty" });
 /// 
@@ -115,7 +115,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System;
 
-namespace UnityVibe.Editor
+namespace VibeUnity.Editor
 {
     /// <summary>
     /// Data structure for batch command JSON files
@@ -195,7 +195,7 @@ namespace UnityVibe.Editor
                 {
                     Directory.CreateDirectory(scenePath);
                     AssetDatabase.Refresh();
-                    Debug.Log($"[UnityCLI] Created directory: {scenePath}");
+                    Debug.Log($"[VibeUnityCLI] Created directory: {scenePath}");
                 }
 
                 // Create full scene path
@@ -204,7 +204,7 @@ namespace UnityVibe.Editor
                 // Check if scene already exists
                 if (File.Exists(fullScenePath))
                 {
-                    Debug.LogWarning($"[UnityCLI] Scene already exists: {fullScenePath}");
+                    Debug.LogWarning($"[VibeUnityCLI] Scene already exists: {fullScenePath}");
                     return false;
                 }
 
@@ -217,11 +217,11 @@ namespace UnityVibe.Editor
                 if (saved)
                 {
                     // Log detailed success information  
-                Debug.Log($"[UnityCLI] ✅ SUCCESS: Created scene '{sceneName}'");
-                Debug.Log($"[UnityCLI]    └─ Type: {sceneSetup}");
-                Debug.Log($"[UnityCLI]    └─ Path: {fullScenePath}");
-                Debug.Log($"[UnityCLI]    └─ Added to Build: {addToBuildSettings}");
-                Debug.Log($"[UnityCLI]    └─ Scene Objects: {newScene.rootCount} root GameObjects");
+                Debug.Log($"[VibeUnityCLI] ✅ SUCCESS: Created scene '{sceneName}'");
+                Debug.Log($"[VibeUnityCLI]    └─ Type: {sceneSetup}");
+                Debug.Log($"[VibeUnityCLI]    └─ Path: {fullScenePath}");
+                Debug.Log($"[VibeUnityCLI]    └─ Added to Build: {addToBuildSettings}");
+                Debug.Log($"[VibeUnityCLI]    └─ Scene Objects: {newScene.rootCount} root GameObjects");
                     
                     // Add to build settings if requested
                     if (addToBuildSettings)
@@ -235,13 +235,13 @@ namespace UnityVibe.Editor
                 }
                 else
                 {
-                    Debug.LogError($"[UnityCLI] Failed to save scene: {fullScenePath}");
+                    Debug.LogError($"[VibeUnityCLI] Failed to save scene: {fullScenePath}");
                     return false;
                 }
             }
             catch (System.Exception e)
             {
-                Debug.LogError($"[UnityCLI] Exception creating scene: {e.Message}");
+                Debug.LogError($"[VibeUnityCLI] Exception creating scene: {e.Message}");
                 return false;
             }
         }
@@ -252,10 +252,10 @@ namespace UnityVibe.Editor
         public static void ListSceneTypes()
         {
             var availableTypes = GetAvailableSceneTypes();
-            Debug.Log($"[UnityCLI] Available scene types: {string.Join(", ", availableTypes)}");
+            Debug.Log($"[VibeUnityCLI] Available scene types: {string.Join(", ", availableTypes)}");
             
             // Also log detailed descriptions
-            Debug.Log("[UnityCLI] Scene Type Descriptions:");
+            Debug.Log("[VibeUnityCLI] Scene Type Descriptions:");
             Debug.Log("  Empty - Completely empty scene");
             Debug.Log("  DefaultGameObjects - Scene with Main Camera and Directional Light");
             Debug.Log("  2D - 2D optimized scene setup");
@@ -314,8 +314,8 @@ namespace UnityVibe.Editor
                 Scene activeScene = SceneManager.GetActiveScene();
                 if (!activeScene.IsValid())
                 {
-                    Debug.LogError($"[UnityCLI] ❌ ERROR: No valid scene available for canvas '{canvasName}'");
-                    Debug.LogError($"[UnityCLI]    └─ Target Scene: '{sceneName ?? "current"}'");
+                    Debug.LogError($"[VibeUnityCLI] ❌ ERROR: No valid scene available for canvas '{canvasName}'");
+                    Debug.LogError($"[VibeUnityCLI]    └─ Target Scene: '{sceneName ?? "current"}'");
                     return false;
                 }
                 
@@ -348,18 +348,18 @@ namespace UnityVibe.Editor
                 }
                 
                 // Log detailed success information
-                Debug.Log($"[UnityCLI] ✅ SUCCESS: Created canvas '{canvasName}'");
-                Debug.Log($"[UnityCLI]    └─ Render Mode: {renderMode}");
-                Debug.Log($"[UnityCLI]    └─ Resolution: {referenceWidth}x{referenceHeight}");
-                Debug.Log($"[UnityCLI]    └─ Scale Mode: {scaleMode}");
-                Debug.Log($"[UnityCLI]    └─ Sorting Order: {sortingOrder}");
-                Debug.Log($"[UnityCLI]    └─ Components: Canvas, CanvasScaler, GraphicRaycaster");
-                Debug.Log($"[UnityCLI]    └─ Hierarchy: {GetGameObjectPath(canvasGO)}");
+                Debug.Log($"[VibeUnityCLI] ✅ SUCCESS: Created canvas '{canvasName}'");
+                Debug.Log($"[VibeUnityCLI]    └─ Render Mode: {renderMode}");
+                Debug.Log($"[VibeUnityCLI]    └─ Resolution: {referenceWidth}x{referenceHeight}");
+                Debug.Log($"[VibeUnityCLI]    └─ Scale Mode: {scaleMode}");
+                Debug.Log($"[VibeUnityCLI]    └─ Sorting Order: {sortingOrder}");
+                Debug.Log($"[VibeUnityCLI]    └─ Components: Canvas, CanvasScaler, GraphicRaycaster");
+                Debug.Log($"[VibeUnityCLI]    └─ Hierarchy: {GetGameObjectPath(canvasGO)}");
                 return true;
             }
             catch (System.Exception e)
             {
-                Debug.LogError($"[UnityCLI] Exception creating canvas: {e.Message}");
+                Debug.LogError($"[VibeUnityCLI] Exception creating canvas: {e.Message}");
                 return false;
             }
         }
@@ -372,7 +372,7 @@ namespace UnityVibe.Editor
             GameObject eventSystemGO = new GameObject("EventSystem");
             eventSystemGO.AddComponent<UnityEngine.EventSystems.EventSystem>();
             eventSystemGO.AddComponent<UnityEngine.EventSystems.StandaloneInputModule>();
-            Debug.Log("[UnityCLI] Created EventSystem for UI interaction");
+            Debug.Log("[VibeUnityCLI] Created EventSystem for UI interaction");
         }
         
         #endregion
@@ -409,10 +409,10 @@ namespace UnityVibe.Editor
                 GameObject parent = FindUIParent(parentName);
                 if (parent == null)
                 {
-                    Debug.LogError($"[UnityCLI] ❌ ERROR: Parent lookup failed for panel '{panelName}'");
-                    Debug.LogError($"[UnityCLI]    └─ Requested Parent: '{parentName ?? "auto-detect"}'");
-                    Debug.LogError($"[UnityCLI]    └─ Target Scene: '{sceneName ?? "current"}'");
-                    Debug.LogError($"[UnityCLI]    └─ Available GameObjects: {ListAvailableGameObjects()}");
+                    Debug.LogError($"[VibeUnityCLI] ❌ ERROR: Parent lookup failed for panel '{panelName}'");
+                    Debug.LogError($"[VibeUnityCLI]    └─ Requested Parent: '{parentName ?? "auto-detect"}'");
+                    Debug.LogError($"[VibeUnityCLI]    └─ Target Scene: '{sceneName ?? "current"}'");
+                    Debug.LogError($"[VibeUnityCLI]    └─ Available GameObjects: {ListAvailableGameObjects()}");
                     return false;
                 }
                 
@@ -429,17 +429,17 @@ namespace UnityVibe.Editor
                 SetupRectTransform(rectTransform, width, height, anchorPreset);
                 
                 // Log detailed success information
-                Debug.Log($"[UnityCLI] ✅ SUCCESS: Created panel '{panelName}'");
-                Debug.Log($"[UnityCLI]    └─ Parent: {parent.name} (Type: {parent.GetComponent<Canvas>()?.GetType().Name ?? parent.GetType().Name})");
-                Debug.Log($"[UnityCLI]    └─ Components: Image (background)");
-                Debug.Log($"[UnityCLI]    └─ Size: {width}x{height}");
-                Debug.Log($"[UnityCLI]    └─ Anchor: {anchorPreset}");
-                Debug.Log($"[UnityCLI]    └─ Hierarchy: {GetGameObjectPath(panelGO)}");
+                Debug.Log($"[VibeUnityCLI] ✅ SUCCESS: Created panel '{panelName}'");
+                Debug.Log($"[VibeUnityCLI]    └─ Parent: {parent.name} (Type: {parent.GetComponent<Canvas>()?.GetType().Name ?? parent.GetType().Name})");
+                Debug.Log($"[VibeUnityCLI]    └─ Components: Image (background)");
+                Debug.Log($"[VibeUnityCLI]    └─ Size: {width}x{height}");
+                Debug.Log($"[VibeUnityCLI]    └─ Anchor: {anchorPreset}");
+                Debug.Log($"[VibeUnityCLI]    └─ Hierarchy: {GetGameObjectPath(panelGO)}");
                 return true;
             }
             catch (System.Exception e)
             {
-                Debug.LogError($"[UnityCLI] Exception creating panel: {e.Message}");
+                Debug.LogError($"[VibeUnityCLI] Exception creating panel: {e.Message}");
                 return false;
             }
         }
@@ -476,10 +476,10 @@ namespace UnityVibe.Editor
                 GameObject parent = FindUIParent(parentName);
                 if (parent == null)
                 {
-                    Debug.LogError($"[UnityCLI] ❌ ERROR: Parent lookup failed for button '{buttonName}'");
-                    Debug.LogError($"[UnityCLI]    └─ Requested Parent: '{parentName ?? "auto-detect"}'");
-                    Debug.LogError($"[UnityCLI]    └─ Target Scene: '{sceneName ?? "current"}'");
-                    Debug.LogError($"[UnityCLI]    └─ Available GameObjects: {ListAvailableGameObjects()}");
+                    Debug.LogError($"[VibeUnityCLI] ❌ ERROR: Parent lookup failed for button '{buttonName}'");
+                    Debug.LogError($"[VibeUnityCLI]    └─ Requested Parent: '{parentName ?? "auto-detect"}'");
+                    Debug.LogError($"[VibeUnityCLI]    └─ Target Scene: '{sceneName ?? "current"}'");
+                    Debug.LogError($"[VibeUnityCLI]    └─ Available GameObjects: {ListAvailableGameObjects()}");
                     return false;
                 }
                 
@@ -502,18 +502,18 @@ namespace UnityVibe.Editor
                 }
                 
                 // Log detailed success information
-                Debug.Log($"[UnityCLI] ✅ SUCCESS: Created button '{buttonName}'");  
-                Debug.Log($"[UnityCLI]    └─ Parent: {parent.name} (Type: {parent.GetComponent<Canvas>()?.GetType().Name ?? parent.GetType().Name})");
-                Debug.Log($"[UnityCLI]    └─ Components: Image, Button");
-                Debug.Log($"[UnityCLI]    └─ Text: \"{buttonText}\"");
-                Debug.Log($"[UnityCLI]    └─ Size: {width}x{height}");
-                Debug.Log($"[UnityCLI]    └─ Anchor: {anchorPreset}");
-                Debug.Log($"[UnityCLI]    └─ Hierarchy: {GetGameObjectPath(buttonGO)}");
+                Debug.Log($"[VibeUnityCLI] ✅ SUCCESS: Created button '{buttonName}'");  
+                Debug.Log($"[VibeUnityCLI]    └─ Parent: {parent.name} (Type: {parent.GetComponent<Canvas>()?.GetType().Name ?? parent.GetType().Name})");
+                Debug.Log($"[VibeUnityCLI]    └─ Components: Image, Button");
+                Debug.Log($"[VibeUnityCLI]    └─ Text: \"{buttonText}\"");
+                Debug.Log($"[VibeUnityCLI]    └─ Size: {width}x{height}");
+                Debug.Log($"[VibeUnityCLI]    └─ Anchor: {anchorPreset}");
+                Debug.Log($"[VibeUnityCLI]    └─ Hierarchy: {GetGameObjectPath(buttonGO)}");
                 return true;
             }
             catch (System.Exception e)
             {
-                Debug.LogError($"[UnityCLI] Exception creating button: {e.Message}");
+                Debug.LogError($"[VibeUnityCLI] Exception creating button: {e.Message}");
                 return false;
             }
         }
@@ -552,10 +552,10 @@ namespace UnityVibe.Editor
                 GameObject parent = FindUIParent(parentName);
                 if (parent == null)
                 {
-                    Debug.LogError($"[UnityCLI] ❌ ERROR: Parent lookup failed for text '{textName}'");
-                    Debug.LogError($"[UnityCLI]    └─ Requested Parent: '{parentName ?? "auto-detect"}'");
-                    Debug.LogError($"[UnityCLI]    └─ Target Scene: '{sceneName ?? "current"}'");
-                    Debug.LogError($"[UnityCLI]    └─ Available GameObjects: {ListAvailableGameObjects()}");
+                    Debug.LogError($"[VibeUnityCLI] ❌ ERROR: Parent lookup failed for text '{textName}'");
+                    Debug.LogError($"[VibeUnityCLI]    └─ Requested Parent: '{parentName ?? "auto-detect"}'");
+                    Debug.LogError($"[VibeUnityCLI]    └─ Target Scene: '{sceneName ?? "current"}'");
+                    Debug.LogError($"[VibeUnityCLI]    └─ Available GameObjects: {ListAvailableGameObjects()}");
                     return false;
                 }
                 
@@ -575,19 +575,19 @@ namespace UnityVibe.Editor
                 SetupRectTransform(rectTransform, width, height, anchorPreset);
                 
                 // Log detailed success information
-                Debug.Log($"[UnityCLI] ✅ SUCCESS: Created text '{textName}'");
-                Debug.Log($"[UnityCLI]    └─ Parent: {parent.name} (Type: {parent.GetComponent<Canvas>()?.GetType().Name ?? parent.GetType().Name})");
-                Debug.Log($"[UnityCLI]    └─ Components: Text");
-                Debug.Log($"[UnityCLI]    └─ Content: \"{textContent}\"");
-                Debug.Log($"[UnityCLI]    └─ Font Size: {fontSize}px");
-                Debug.Log($"[UnityCLI]    └─ Size: {width}x{height}");
-                Debug.Log($"[UnityCLI]    └─ Anchor: {anchorPreset}");
-                Debug.Log($"[UnityCLI]    └─ Hierarchy: {GetGameObjectPath(textGO)}");
+                Debug.Log($"[VibeUnityCLI] ✅ SUCCESS: Created text '{textName}'");
+                Debug.Log($"[VibeUnityCLI]    └─ Parent: {parent.name} (Type: {parent.GetComponent<Canvas>()?.GetType().Name ?? parent.GetType().Name})");
+                Debug.Log($"[VibeUnityCLI]    └─ Components: Text");
+                Debug.Log($"[VibeUnityCLI]    └─ Content: \"{textContent}\"");
+                Debug.Log($"[VibeUnityCLI]    └─ Font Size: {fontSize}px");
+                Debug.Log($"[VibeUnityCLI]    └─ Size: {width}x{height}");
+                Debug.Log($"[VibeUnityCLI]    └─ Anchor: {anchorPreset}");
+                Debug.Log($"[VibeUnityCLI]    └─ Hierarchy: {GetGameObjectPath(textGO)}");
                 return true;
             }
             catch (System.Exception e)
             {
-                Debug.LogError($"[UnityCLI] Exception creating text: {e.Message}");
+                Debug.LogError($"[VibeUnityCLI] Exception creating text: {e.Message}");
                 return false;
             }
         }
@@ -613,7 +613,7 @@ namespace UnityVibe.Editor
                     // For 2D, we'll use empty and set up 2D specific settings
                     return NewSceneSetup.EmptyScene;
                 default:
-                    Debug.LogWarning($"[UnityCLI] Unknown scene setup '{sceneSetup}', using Empty");
+                    Debug.LogWarning($"[VibeUnityCLI] Unknown scene setup '{sceneSetup}', using Empty");
                     return NewSceneSetup.EmptyScene;
             }
         }
@@ -635,7 +635,7 @@ namespace UnityVibe.Editor
                 case "world":
                     return RenderMode.WorldSpace;
                 default:
-                    Debug.LogWarning($"[UnityCLI] Unknown render mode '{renderMode}', using ScreenSpaceOverlay");
+                    Debug.LogWarning($"[VibeUnityCLI] Unknown render mode '{renderMode}', using ScreenSpaceOverlay");
                     return RenderMode.ScreenSpaceOverlay;
             }
         }
@@ -657,7 +657,7 @@ namespace UnityVibe.Editor
                 case "physical":
                     return CanvasScaler.ScaleMode.ConstantPhysicalSize;
                 default:
-                    Debug.LogWarning($"[UnityCLI] Unknown scale mode '{scaleMode}', using ScaleWithScreenSize");
+                    Debug.LogWarning($"[VibeUnityCLI] Unknown scale mode '{scaleMode}', using ScaleWithScreenSize");
                     return CanvasScaler.ScaleMode.ScaleWithScreenSize;
             }
         }
@@ -675,7 +675,7 @@ namespace UnityVibe.Editor
                 {
                     return canvas.gameObject;
                 }
-                Debug.LogError("[UnityCLI] No parent specified and no canvas found in scene");
+                Debug.LogError("[VibeUnityCLI] No parent specified and no canvas found in scene");
                 return null;
             }
             
@@ -692,7 +692,7 @@ namespace UnityVibe.Editor
                 }
             }
             
-            Debug.LogError($"[UnityCLI] Parent GameObject '{parentName}' not found in active scene");
+            Debug.LogError($"[VibeUnityCLI] Parent GameObject '{parentName}' not found in active scene");
             return null;
         }
         
@@ -856,7 +856,7 @@ namespace UnityVibe.Editor
                 Scene currentScene = SceneManager.GetActiveScene();
                 if (currentScene.IsValid() && !string.IsNullOrEmpty(currentScene.path))
                 {
-                    Debug.Log($"[UnityCLI] Using current active scene: {currentScene.name}");
+                    Debug.Log($"[VibeUnityCLI] Using current active scene: {currentScene.name}");
                     return true;
                 }
                 
@@ -864,25 +864,25 @@ namespace UnityVibe.Editor
                 string smartScene = GetMostRecentScene();
                 if (!string.IsNullOrEmpty(smartScene))
                 {
-                    Debug.Log($"[UnityCLI] ⚡ Smart Detection: Using most recent scene: {System.IO.Path.GetFileNameWithoutExtension(smartScene)}");
+                    Debug.Log($"[VibeUnityCLI] ⚡ Smart Detection: Using most recent scene: {System.IO.Path.GetFileNameWithoutExtension(smartScene)}");
                     try
                     {
                         Scene targetScene = EditorSceneManager.OpenScene(smartScene);
                         if (targetScene.IsValid())
                         {
-                            Debug.Log($"[UnityCLI] ✅ Loaded detected scene: {targetScene.name}");
+                            Debug.Log($"[VibeUnityCLI] ✅ Loaded detected scene: {targetScene.name}");
                             return true;
                         }
                     }
                     catch (System.Exception e)
                     {
-                        Debug.LogWarning($"[UnityCLI] Failed to load detected scene: {e.Message}");
+                        Debug.LogWarning($"[VibeUnityCLI] Failed to load detected scene: {e.Message}");
                     }
                 }
                 
-                Debug.LogError($"[UnityCLI] ❌ ERROR: No valid scene available");
-                Debug.LogError($"[UnityCLI]    └─ No active scene and no scenes found in project");
-                Debug.LogError($"[UnityCLI]    └─ Available scenes: {ListAvailableScenes()}");
+                Debug.LogError($"[VibeUnityCLI] ❌ ERROR: No valid scene available");
+                Debug.LogError($"[VibeUnityCLI]    └─ No active scene and no scenes found in project");
+                Debug.LogError($"[VibeUnityCLI]    └─ Available scenes: {ListAvailableScenes()}");
                 return false;
             }
             
@@ -890,8 +890,8 @@ namespace UnityVibe.Editor
             string scenePath = FindSceneAsset(sceneName);
             if (string.IsNullOrEmpty(scenePath))
             {
-                Debug.LogError($"[UnityCLI] ❌ ERROR: Scene '{sceneName}' not found");
-                Debug.LogError($"[UnityCLI]    └─ Available scenes: {ListAvailableScenes()}");
+                Debug.LogError($"[VibeUnityCLI] ❌ ERROR: Scene '{sceneName}' not found");
+                Debug.LogError($"[VibeUnityCLI]    └─ Available scenes: {ListAvailableScenes()}");
                 return false;
             }
             
@@ -900,18 +900,18 @@ namespace UnityVibe.Editor
                 Scene targetScene = EditorSceneManager.OpenScene(scenePath);
                 if (targetScene.IsValid())
                 {
-                    Debug.Log($"[UnityCLI] ✅ Loaded target scene: {sceneName} ({scenePath})");
+                    Debug.Log($"[VibeUnityCLI] ✅ Loaded target scene: {sceneName} ({scenePath})");
                     return true;
                 }
                 else
                 {
-                    Debug.LogError($"[UnityCLI] ❌ ERROR: Failed to load scene '{sceneName}'");
+                    Debug.LogError($"[VibeUnityCLI] ❌ ERROR: Failed to load scene '{sceneName}'");
                     return false;
                 }
             }
             catch (System.Exception e)
             {
-                Debug.LogError($"[UnityCLI] ❌ ERROR: Exception loading scene '{sceneName}': {e.Message}");
+                Debug.LogError($"[VibeUnityCLI] ❌ ERROR: Exception loading scene '{sceneName}': {e.Message}");
                 return false;
             }
         }
@@ -982,7 +982,7 @@ namespace UnityVibe.Editor
                 string[] sceneGuids = AssetDatabase.FindAssets("t:Scene");
                 if (sceneGuids.Length == 0)
                 {
-                    Debug.Log("[UnityCLI] Smart Detection: No scenes found in project");
+                    Debug.Log("[VibeUnityCLI] Smart Detection: No scenes found in project");
                     return null;
                 }
                 
@@ -1005,18 +1005,18 @@ namespace UnityVibe.Editor
                 
                 if (!string.IsNullOrEmpty(mostRecentPath))
                 {
-                    Debug.Log($"[UnityCLI] Smart Detection: Found most recent scene: {mostRecentPath} (modified: {mostRecentTime})");
+                    Debug.Log($"[VibeUnityCLI] Smart Detection: Found most recent scene: {mostRecentPath} (modified: {mostRecentTime})");
                 }
                 else
                 {
-                    Debug.Log("[UnityCLI] Smart Detection: No valid scene files found");
+                    Debug.Log("[VibeUnityCLI] Smart Detection: No valid scene files found");
                 }
                 
                 return mostRecentPath;
             }
             catch (System.Exception e)
             {
-                Debug.LogWarning($"[UnityCLI] Error in smart scene detection: {e.Message}");
+                Debug.LogWarning($"[VibeUnityCLI] Error in smart scene detection: {e.Message}");
                 return null;
             }
         }
@@ -1067,13 +1067,13 @@ namespace UnityVibe.Editor
         {
             if (string.IsNullOrEmpty(sceneName))
             {
-                Debug.LogError("[UnityCLI] Scene name cannot be empty");
+                Debug.LogError("[VibeUnityCLI] Scene name cannot be empty");
                 return false;
             }
             
             if (string.IsNullOrEmpty(scenePath))
             {
-                Debug.LogError("[UnityCLI] Scene path cannot be empty");
+                Debug.LogError("[VibeUnityCLI] Scene path cannot be empty");
                 return false;
             }
             
@@ -1081,7 +1081,7 @@ namespace UnityVibe.Editor
             char[] invalidChars = Path.GetInvalidFileNameChars();
             if (sceneName.IndexOfAny(invalidChars) >= 0)
             {
-                Debug.LogError("[UnityCLI] Scene name contains invalid characters");
+                Debug.LogError("[VibeUnityCLI] Scene name contains invalid characters");
                 return false;
             }
             
@@ -1103,7 +1103,7 @@ namespace UnityVibe.Editor
                 {
                     if (scene.path == scenePath)
                     {
-                        Debug.Log($"[UnityCLI] Scene already in build settings: {scenePath}");
+                        Debug.Log($"[VibeUnityCLI] Scene already in build settings: {scenePath}");
                         return;
                     }
                 }
@@ -1114,11 +1114,11 @@ namespace UnityVibe.Editor
                 newScenes[originalScenes.Length] = new EditorBuildSettingsScene(scenePath, true);
                 
                 EditorBuildSettings.scenes = newScenes;
-                Debug.Log($"[UnityCLI] Added scene to build settings: {scenePath}");
+                Debug.Log($"[VibeUnityCLI] Added scene to build settings: {scenePath}");
             }
             catch (System.Exception e)
             {
-                Debug.LogWarning($"[UnityCLI] Failed to add scene to build settings: {e.Message}");
+                Debug.LogWarning($"[VibeUnityCLI] Failed to add scene to build settings: {e.Message}");
             }
         }
         
@@ -1128,7 +1128,7 @@ namespace UnityVibe.Editor
         
         /// <summary>
         /// Command line entry point for scene creation
-        /// Usage: Unity -batchmode -quit -executeMethod UnityVibe.Editor.CLI.CreateSceneFromCommandLine -projectPath "path/to/project" scene_name scene_path scene_type
+        /// Usage: Unity -batchmode -quit -executeMethod VibeUnity.Editor.CLI.CreateSceneFromCommandLine -projectPath "path/to/project" scene_name scene_path scene_type
         /// </summary>
         public static void CreateSceneFromCommandLine()
         {
@@ -1138,8 +1138,8 @@ namespace UnityVibe.Editor
             int executeMethodIndex = System.Array.FindIndex(args, arg => arg == "-executeMethod");
             if (executeMethodIndex == -1 || executeMethodIndex + 4 >= args.Length)
             {
-                Debug.LogError("[UnityCLI] Invalid arguments. Usage: scene_name scene_path [scene_type] [add_to_build]");
-                Debug.LogError("[UnityCLI] Available scene types: " + string.Join(", ", GetAvailableSceneTypes()));
+                Debug.LogError("[VibeUnityCLI] Invalid arguments. Usage: scene_name scene_path [scene_type] [add_to_build]");
+                Debug.LogError("[VibeUnityCLI] Available scene types: " + string.Join(", ", GetAvailableSceneTypes()));
                 return;
             }
             
@@ -1148,24 +1148,24 @@ namespace UnityVibe.Editor
             string sceneType = args.Length > executeMethodIndex + 4 ? args[executeMethodIndex + 4] : "DefaultGameObjects";
             bool addToBuild = args.Length > executeMethodIndex + 5 ? bool.Parse(args[executeMethodIndex + 5]) : false;
             
-            Debug.Log($"[UnityCLI] Creating scene: {sceneName} at {scenePath} (type: {sceneType})");
+            Debug.Log($"[VibeUnityCLI] Creating scene: {sceneName} at {scenePath} (type: {sceneType})");
             
             bool success = CreateScene(sceneName, scenePath, sceneType, addToBuild);
             
             if (success)
             {
-                Debug.Log($"[UnityCLI] ✅ Successfully created scene: {scenePath}/{sceneName}.unity");
+                Debug.Log($"[VibeUnityCLI] ✅ Successfully created scene: {scenePath}/{sceneName}.unity");
             }
             else
             {
-                Debug.LogError($"[UnityCLI] ❌ Failed to create scene");
+                Debug.LogError($"[VibeUnityCLI] ❌ Failed to create scene");
                 UnityEditor.EditorApplication.Exit(1);
             }
         }
         
         /// <summary>
         /// Command line entry point for canvas creation
-        /// Usage: Unity -batchmode -quit -executeMethod UnityVibe.Editor.CLI.AddCanvasFromCommandLine canvas_name [scene_name] render_mode [width] [height] [scale_mode]
+        /// Usage: Unity -batchmode -quit -executeMethod VibeUnity.Editor.CLI.AddCanvasFromCommandLine canvas_name [scene_name] render_mode [width] [height] [scale_mode]
         /// </summary>
         public static void AddCanvasFromCommandLine()
         {
@@ -1174,8 +1174,8 @@ namespace UnityVibe.Editor
             int executeMethodIndex = System.Array.FindIndex(args, arg => arg == "-executeMethod");
             if (executeMethodIndex == -1 || executeMethodIndex + 2 >= args.Length)
             {
-                Debug.LogError("[UnityCLI] Invalid arguments. Usage: canvas_name [scene_name] render_mode [width] [height] [scale_mode]");
-                Debug.LogError("[UnityCLI] Render modes: ScreenSpaceOverlay, ScreenSpaceCamera, WorldSpace");
+                Debug.LogError("[VibeUnityCLI] Invalid arguments. Usage: canvas_name [scene_name] render_mode [width] [height] [scale_mode]");
+                Debug.LogError("[VibeUnityCLI] Render modes: ScreenSpaceOverlay, ScreenSpaceCamera, WorldSpace");
                 return;
             }
             
@@ -1189,38 +1189,38 @@ namespace UnityVibe.Editor
             // Handle empty string as null for optional parameters
             if (string.IsNullOrEmpty(sceneName)) sceneName = null;
             
-            Debug.Log($"[UnityCLI] Adding canvas: {canvasName} in scene {sceneName ?? "current"} ({renderMode}, {width}x{height})");
+            Debug.Log($"[VibeUnityCLI] Adding canvas: {canvasName} in scene {sceneName ?? "current"} ({renderMode}, {width}x{height})");
             
             bool success = AddCanvas(canvasName, sceneName, renderMode, width, height, scaleMode);
             
             if (success)
             {
-                Debug.Log($"[UnityCLI] ✅ Successfully added canvas: {canvasName}");
+                Debug.Log($"[VibeUnityCLI] ✅ Successfully added canvas: {canvasName}");
                 
                 // Save the scene
                 UnityEditor.SceneManagement.EditorSceneManager.SaveOpenScenes();
             }
             else
             {
-                Debug.LogError($"[UnityCLI] ❌ Failed to add canvas");
+                Debug.LogError($"[VibeUnityCLI] ❌ Failed to add canvas");
                 UnityEditor.EditorApplication.Exit(1);
             }
         }
         
         /// <summary>
         /// Command line entry point for listing scene types
-        /// Usage: Unity -batchmode -quit -executeMethod UnityVibe.Editor.CLI.ListSceneTypesFromCommandLine
+        /// Usage: Unity -batchmode -quit -executeMethod VibeUnity.Editor.CLI.ListSceneTypesFromCommandLine
         /// </summary>
         public static void ListSceneTypesFromCommandLine()
         {
-            Debug.Log("[UnityCLI] === Available Scene Types ===");
+            Debug.Log("[VibeUnityCLI] === Available Scene Types ===");
             ListSceneTypes();
-            Debug.Log("[UnityCLI] ===========================");
+            Debug.Log("[VibeUnityCLI] ===========================");
         }
         
         /// <summary>
         /// Command line entry point for adding UI panels
-        /// Usage: Unity -batchmode -quit -executeMethod UnityVibe.Editor.CLI.AddPanelFromCommandLine panel_name [parent_name] [scene_name] [width] [height] [anchor_preset]
+        /// Usage: Unity -batchmode -quit -executeMethod VibeUnity.Editor.CLI.AddPanelFromCommandLine panel_name [parent_name] [scene_name] [width] [height] [anchor_preset]
         /// </summary>
         public static void AddPanelFromCommandLine()
         {
@@ -1229,7 +1229,7 @@ namespace UnityVibe.Editor
             int executeMethodIndex = System.Array.FindIndex(args, arg => arg == "-executeMethod");
             if (executeMethodIndex == -1 || executeMethodIndex + 2 >= args.Length)
             {
-                Debug.LogError("[UnityCLI] Invalid arguments. Usage: panel_name [parent_name] [scene_name] [width] [height] [anchor_preset]");
+                Debug.LogError("[VibeUnityCLI] Invalid arguments. Usage: panel_name [parent_name] [scene_name] [width] [height] [anchor_preset]");
                 return;
             }
             
@@ -1244,25 +1244,25 @@ namespace UnityVibe.Editor
             if (string.IsNullOrEmpty(parentName)) parentName = null;
             if (string.IsNullOrEmpty(sceneName)) sceneName = null;
             
-            Debug.Log($"[UnityCLI] Adding panel: {panelName} under {parentName ?? "default canvas"} in scene {sceneName ?? "current"}");
+            Debug.Log($"[VibeUnityCLI] Adding panel: {panelName} under {parentName ?? "default canvas"} in scene {sceneName ?? "current"}");
             
             bool success = AddPanel(panelName, parentName, sceneName, width, height, anchorPreset);
             
             if (success)
             {
-                Debug.Log($"[UnityCLI] ✅ Successfully added panel: {panelName}");
+                Debug.Log($"[VibeUnityCLI] ✅ Successfully added panel: {panelName}");
                 UnityEditor.SceneManagement.EditorSceneManager.SaveOpenScenes();
             }
             else
             {
-                Debug.LogError($"[UnityCLI] ❌ Failed to add panel");
+                Debug.LogError($"[VibeUnityCLI] ❌ Failed to add panel");
                 UnityEditor.EditorApplication.Exit(1);
             }
         }
         
         /// <summary>
         /// Command line entry point for adding UI buttons
-        /// Usage: Unity -batchmode -quit -executeMethod UnityVibe.Editor.CLI.AddButtonFromCommandLine button_name [parent_name] [scene_name] [button_text] [width] [height] [anchor_preset]
+        /// Usage: Unity -batchmode -quit -executeMethod VibeUnity.Editor.CLI.AddButtonFromCommandLine button_name [parent_name] [scene_name] [button_text] [width] [height] [anchor_preset]
         /// </summary>
         public static void AddButtonFromCommandLine()
         {
@@ -1271,7 +1271,7 @@ namespace UnityVibe.Editor
             int executeMethodIndex = System.Array.FindIndex(args, arg => arg == "-executeMethod");
             if (executeMethodIndex == -1 || executeMethodIndex + 2 >= args.Length)
             {
-                Debug.LogError("[UnityCLI] Invalid arguments. Usage: button_name [parent_name] [scene_name] [button_text] [width] [height] [anchor_preset]");
+                Debug.LogError("[VibeUnityCLI] Invalid arguments. Usage: button_name [parent_name] [scene_name] [button_text] [width] [height] [anchor_preset]");
                 return;
             }
             
@@ -1287,25 +1287,25 @@ namespace UnityVibe.Editor
             if (string.IsNullOrEmpty(parentName)) parentName = null;
             if (string.IsNullOrEmpty(sceneName)) sceneName = null;
             
-            Debug.Log($"[UnityCLI] Adding button: {buttonName} under {parentName ?? "default canvas"} in scene {sceneName ?? "current"}");
+            Debug.Log($"[VibeUnityCLI] Adding button: {buttonName} under {parentName ?? "default canvas"} in scene {sceneName ?? "current"}");
             
             bool success = AddButton(buttonName, parentName, sceneName, buttonText, width, height, anchorPreset);
             
             if (success)
             {
-                Debug.Log($"[UnityCLI] ✅ Successfully added button: {buttonName}");
+                Debug.Log($"[VibeUnityCLI] ✅ Successfully added button: {buttonName}");
                 UnityEditor.SceneManagement.EditorSceneManager.SaveOpenScenes();
             }
             else
             {
-                Debug.LogError($"[UnityCLI] ❌ Failed to add button");
+                Debug.LogError($"[VibeUnityCLI] ❌ Failed to add button");
                 UnityEditor.EditorApplication.Exit(1);
             }
         }
         
         /// <summary>
         /// Command line entry point for adding UI text
-        /// Usage: Unity -batchmode -quit -executeMethod UnityVibe.Editor.CLI.AddTextFromCommandLine text_name [parent_name] [scene_name] [text_content] [font_size] [width] [height] [anchor_preset]
+        /// Usage: Unity -batchmode -quit -executeMethod VibeUnity.Editor.CLI.AddTextFromCommandLine text_name [parent_name] [scene_name] [text_content] [font_size] [width] [height] [anchor_preset]
         /// </summary>
         public static void AddTextFromCommandLine()
         {
@@ -1314,7 +1314,7 @@ namespace UnityVibe.Editor
             int executeMethodIndex = System.Array.FindIndex(args, arg => arg == "-executeMethod");
             if (executeMethodIndex == -1 || executeMethodIndex + 2 >= args.Length)
             {
-                Debug.LogError("[UnityCLI] Invalid arguments. Usage: text_name [parent_name] [scene_name] [text_content] [font_size] [width] [height] [anchor_preset]");
+                Debug.LogError("[VibeUnityCLI] Invalid arguments. Usage: text_name [parent_name] [scene_name] [text_content] [font_size] [width] [height] [anchor_preset]");
                 return;
             }
             
@@ -1331,25 +1331,25 @@ namespace UnityVibe.Editor
             if (string.IsNullOrEmpty(parentName)) parentName = null;
             if (string.IsNullOrEmpty(sceneName)) sceneName = null;
             
-            Debug.Log($"[UnityCLI] Adding text: {textName} under {parentName ?? "default canvas"} in scene {sceneName ?? "current"}");
+            Debug.Log($"[VibeUnityCLI] Adding text: {textName} under {parentName ?? "default canvas"} in scene {sceneName ?? "current"}");
             
             bool success = AddText(textName, parentName, sceneName, textContent, fontSize, width, height, anchorPreset);
             
             if (success)
             {
-                Debug.Log($"[UnityCLI] ✅ Successfully added text: {textName}");
+                Debug.Log($"[VibeUnityCLI] ✅ Successfully added text: {textName}");
                 UnityEditor.SceneManagement.EditorSceneManager.SaveOpenScenes();
             }
             else
             {
-                Debug.LogError($"[UnityCLI] ❌ Failed to add text");
+                Debug.LogError($"[VibeUnityCLI] ❌ Failed to add text");
                 UnityEditor.EditorApplication.Exit(1);
             }
         }
         
         /// <summary>
         /// Command line entry point for batch file execution
-        /// Usage: Unity -batchmode -quit -executeMethod UnityVibe.Editor.CLI.ExecuteBatchFromCommandLine json_file_path
+        /// Usage: Unity -batchmode -quit -executeMethod VibeUnity.Editor.CLI.ExecuteBatchFromCommandLine json_file_path
         /// </summary>
         public static void ExecuteBatchFromCommandLine()
         {
@@ -1358,23 +1358,23 @@ namespace UnityVibe.Editor
             int executeMethodIndex = System.Array.FindIndex(args, arg => arg == "-executeMethod");
             if (executeMethodIndex == -1 || executeMethodIndex + 2 >= args.Length)
             {
-                Debug.LogError("[UnityCLI] Invalid arguments. Usage: json_file_path");
+                Debug.LogError("[VibeUnityCLI] Invalid arguments. Usage: json_file_path");
                 return;
             }
             
             string jsonFilePath = args[executeMethodIndex + 2];
             
-            Debug.Log($"[UnityCLI] Executing batch file: {jsonFilePath}");
+            Debug.Log($"[VibeUnityCLI] Executing batch file: {jsonFilePath}");
             
             bool success = ExecuteBatchFile(jsonFilePath);
             
             if (success)
             {
-                Debug.Log($"[UnityCLI] ✅ Batch file executed successfully");
+                Debug.Log($"[VibeUnityCLI] ✅ Batch file executed successfully");
             }
             else
             {
-                Debug.LogError($"[UnityCLI] ❌ Failed to execute batch file");
+                Debug.LogError($"[VibeUnityCLI] ❌ Failed to execute batch file");
                 UnityEditor.EditorApplication.Exit(1);
             }
         }
@@ -1390,7 +1390,7 @@ namespace UnityVibe.Editor
             {
                 if (!System.IO.File.Exists(jsonFilePath))
                 {
-                    Debug.LogError($"[UnityCLI] Batch file not found: {jsonFilePath}");
+                    Debug.LogError($"[VibeUnityCLI] Batch file not found: {jsonFilePath}");
                     return false;
                 }
                 
@@ -1404,32 +1404,32 @@ namespace UnityVibe.Editor
                 }
                 catch (System.Exception e)
                 {
-                    Debug.LogError($"[UnityCLI] Failed to parse JSON: {e.Message}");
+                    Debug.LogError($"[VibeUnityCLI] Failed to parse JSON: {e.Message}");
                     return false;
                 }
                 
                 if (batchFile == null || batchFile.commands == null || batchFile.commands.Length == 0)
                 {
-                    Debug.LogError("[UnityCLI] No commands found in batch file");
+                    Debug.LogError("[VibeUnityCLI] No commands found in batch file");
                     return false;
                 }
                 
-                Debug.Log($"[UnityCLI] Batch file loaded: {batchFile.commands.Length} commands");
+                Debug.Log($"[VibeUnityCLI] Batch file loaded: {batchFile.commands.Length} commands");
                 if (!string.IsNullOrEmpty(batchFile.description))
                 {
-                    Debug.Log($"[UnityCLI] Description: {batchFile.description}");
+                    Debug.Log($"[VibeUnityCLI] Description: {batchFile.description}");
                 }
                 
                 // Execute commands sequentially
                 for (int i = 0; i < batchFile.commands.Length; i++)
                 {
                     var command = batchFile.commands[i];
-                    Debug.Log($"[UnityCLI] Executing command {i + 1}/{batchFile.commands.Length}: {command.action}");
+                    Debug.Log($"[VibeUnityCLI] Executing command {i + 1}/{batchFile.commands.Length}: {command.action}");
                     
                     bool commandSuccess = ExecuteBatchCommand(command);
                     if (!commandSuccess)
                     {
-                        Debug.LogError($"[UnityCLI] Command {i + 1} failed: {command.action}");
+                        Debug.LogError($"[VibeUnityCLI] Command {i + 1} failed: {command.action}");
                         return false;
                     }
                 }
@@ -1442,7 +1442,7 @@ namespace UnityVibe.Editor
             }
             catch (System.Exception e)
             {
-                Debug.LogError($"[UnityCLI] Exception executing batch file: {e.Message}");
+                Debug.LogError($"[VibeUnityCLI] Exception executing batch file: {e.Message}");
                 return false;
             }
         }
@@ -1465,7 +1465,7 @@ namespace UnityVibe.Editor
                 case "add-text":
                     return ExecuteAddTextCommand(command);
                 default:
-                    Debug.LogError($"[UnityCLI] Unknown batch command: {command.action}");
+                    Debug.LogError($"[VibeUnityCLI] Unknown batch command: {command.action}");
                     return false;
             }
         }
@@ -1636,34 +1636,34 @@ namespace UnityVibe.Editor
         
         /// <summary>
         /// Command line entry point for help
-        /// Usage: Unity -batchmode -quit -executeMethod UnityVibe.Editor.CLI.ShowHelpFromCommandLine
+        /// Usage: Unity -batchmode -quit -executeMethod VibeUnity.Editor.CLI.ShowHelpFromCommandLine
         /// </summary>
         public static void ShowHelpFromCommandLine()
         {
-            Debug.Log("[UnityCLI] === Unity Vibe CLI Help ===");
-            Debug.Log("[UnityCLI] ");
-            Debug.Log("[UnityCLI] SCENE CREATION:");
-            Debug.Log("[UnityCLI]   unity-create-scene <scene_name> <scene_path> [scene_type] [add_to_build]");
-            Debug.Log("[UnityCLI]   Example: unity-create-scene MyScene Assets/Scenes DefaultGameObjects false");
-            Debug.Log("[UnityCLI] ");
-            Debug.Log("[UnityCLI] ADD CANVAS:");
-            Debug.Log("[UnityCLI]   unity-add-canvas <canvas_name> <render_mode> [width] [height] [scale_mode]");
-            Debug.Log("[UnityCLI]   Example: unity-add-canvas UICanvas ScreenSpaceOverlay 1920 1080 ScaleWithScreenSize");
-            Debug.Log("[UnityCLI] ");
-            Debug.Log("[UnityCLI] BATCH FILE:");
-            Debug.Log("[UnityCLI]   unity-batch-file <json_file_path>");
-            Debug.Log("[UnityCLI]   Example: unity-batch-file ui-setup.json");
-            Debug.Log("[UnityCLI] ");
-            Debug.Log("[UnityCLI] LIST SCENE TYPES:");
-            Debug.Log("[UnityCLI]   unity-list-types");
-            Debug.Log("[UnityCLI] ");
-            Debug.Log("[UnityCLI] HELP:");
-            Debug.Log("[UnityCLI]   unity-cli-help");
-            Debug.Log("[UnityCLI] ");
-            Debug.Log("[UnityCLI] Available Scene Types: " + string.Join(", ", GetAvailableSceneTypes()));
-            Debug.Log("[UnityCLI] Available Render Modes: ScreenSpaceOverlay, ScreenSpaceCamera, WorldSpace");
-            Debug.Log("[UnityCLI] Available Scale Modes: ConstantPixelSize, ScaleWithScreenSize, ConstantPhysicalSize");
-            Debug.Log("[UnityCLI] ===============================");
+            Debug.Log("[VibeUnityCLI] === Vibe Unity Help ===");
+            Debug.Log("[VibeUnityCLI] ");
+            Debug.Log("[VibeUnityCLI] SCENE CREATION:");
+            Debug.Log("[VibeUnityCLI]   unity-create-scene <scene_name> <scene_path> [scene_type] [add_to_build]");
+            Debug.Log("[VibeUnityCLI]   Example: unity-create-scene MyScene Assets/Scenes DefaultGameObjects false");
+            Debug.Log("[VibeUnityCLI] ");
+            Debug.Log("[VibeUnityCLI] ADD CANVAS:");
+            Debug.Log("[VibeUnityCLI]   unity-add-canvas <canvas_name> <render_mode> [width] [height] [scale_mode]");
+            Debug.Log("[VibeUnityCLI]   Example: unity-add-canvas UICanvas ScreenSpaceOverlay 1920 1080 ScaleWithScreenSize");
+            Debug.Log("[VibeUnityCLI] ");
+            Debug.Log("[VibeUnityCLI] BATCH FILE:");
+            Debug.Log("[VibeUnityCLI]   unity-batch-file <json_file_path>");
+            Debug.Log("[VibeUnityCLI]   Example: unity-batch-file ui-setup.json");
+            Debug.Log("[VibeUnityCLI] ");
+            Debug.Log("[VibeUnityCLI] LIST SCENE TYPES:");
+            Debug.Log("[VibeUnityCLI]   unity-list-types");
+            Debug.Log("[VibeUnityCLI] ");
+            Debug.Log("[VibeUnityCLI] HELP:");
+            Debug.Log("[VibeUnityCLI]   unity-cli-help");
+            Debug.Log("[VibeUnityCLI] ");
+            Debug.Log("[VibeUnityCLI] Available Scene Types: " + string.Join(", ", GetAvailableSceneTypes()));
+            Debug.Log("[VibeUnityCLI] Available Render Modes: ScreenSpaceOverlay, ScreenSpaceCamera, WorldSpace");
+            Debug.Log("[VibeUnityCLI] Available Scale Modes: ConstantPixelSize, ScaleWithScreenSize, ConstantPhysicalSize");
+            Debug.Log("[VibeUnityCLI] ===============================");
         }
         
         #endregion
@@ -1687,10 +1687,12 @@ namespace UnityVibe.Editor
                 Directory.CreateDirectory(COMMAND_QUEUE_DIR);
             }
             
-            // Start watching for command files
-            EditorApplication.update += CheckForCommandFiles;
-            
-            Debug.Log("[UnityCLI] File watcher initialized. Watching: " + COMMAND_QUEUE_DIR);
+            // Start watching for command files if enabled
+            if (VibeUnityMenu.IsFileWatcherEnabled)
+            {
+                EditorApplication.update += CheckForCommandFiles;
+                Debug.Log("[VibeUnityCLI] File watcher initialized. Watching: " + COMMAND_QUEUE_DIR);
+            }
         }
         
         /// <summary>
@@ -1711,7 +1713,7 @@ namespace UnityVibe.Editor
                     if (IsFileLocked(filePath))
                         continue;
                     
-                    Debug.Log($"[UnityCLI] Found command file: {Path.GetFileName(filePath)}");
+                    Debug.Log($"[VibeUnityCLI] Found command file: {Path.GetFileName(filePath)}");
                     
                     // Execute the batch file
                     bool success = ExecuteBatchFile(filePath);
@@ -1727,36 +1729,36 @@ namespace UnityVibe.Editor
                     try
                     {
                         File.Move(filePath, processedPath);
-                        Debug.Log($"[UnityCLI] Command file processed and moved to: {processedPath}");
+                        Debug.Log($"[VibeUnityCLI] Command file processed and moved to: {processedPath}");
                     }
                     catch (Exception e)
                     {
-                        Debug.LogWarning($"[UnityCLI] Could not move processed file: {e.Message}");
+                        Debug.LogWarning($"[VibeUnityCLI] Could not move processed file: {e.Message}");
                         // Try to delete instead
                         try
                         {
                             File.Delete(filePath);
-                            Debug.Log($"[UnityCLI] Command file deleted: {Path.GetFileName(filePath)}");
+                            Debug.Log($"[VibeUnityCLI] Command file deleted: {Path.GetFileName(filePath)}");
                         }
                         catch
                         {
-                            Debug.LogError($"[UnityCLI] Could not delete command file: {filePath}");
+                            Debug.LogError($"[VibeUnityCLI] Could not delete command file: {filePath}");
                         }
                     }
                     
                     if (success)
                     {
-                        Debug.Log("[UnityCLI] ✅ File watcher command executed successfully");
+                        Debug.Log("[VibeUnityCLI] ✅ File watcher command executed successfully");
                     }
                     else
                     {
-                        Debug.LogError("[UnityCLI] ❌ File watcher command execution failed");
+                        Debug.LogError("[VibeUnityCLI] ❌ File watcher command execution failed");
                     }
                 }
             }
             catch (Exception e)
             {
-                Debug.LogError($"[UnityCLI] Error in file watcher: {e.Message}");
+                Debug.LogError($"[VibeUnityCLI] Error in file watcher: {e.Message}");
             }
         }
         
@@ -1782,16 +1784,25 @@ namespace UnityVibe.Editor
             }
         }
         
+        // File watcher toggle moved to VibeUnityMenu.cs
+        
         /// <summary>
-        /// Menu item to toggle file watcher
+        /// Enable the file watcher
         /// </summary>
-        [MenuItem("Tools/Unity Vibe CLI/Toggle File Watcher", priority = 420)]
-        private static void ToggleFileWatcher()
+        public static void EnableFileWatcher()
         {
-            // For now, just show status
-            EditorUtility.DisplayDialog("File Watcher Status", 
-                $"File watcher is active.\nWatching: {COMMAND_QUEUE_DIR}\n\nDrop JSON command files here for automatic execution.", 
-                "OK");
+            EditorApplication.update -= CheckForCommandFiles;
+            EditorApplication.update += CheckForCommandFiles;
+            Debug.Log("[VibeUnityCLI] File watcher enabled");
+        }
+        
+        /// <summary>
+        /// Disable the file watcher
+        /// </summary>
+        public static void DisableFileWatcher()
+        {
+            EditorApplication.update -= CheckForCommandFiles;
+            Debug.Log("[VibeUnityCLI] File watcher disabled");
         }
         
         #endregion
@@ -1801,10 +1812,9 @@ namespace UnityVibe.Editor
         /// <summary>
         /// Debug method to show current CLI configuration and capabilities
         /// </summary>
-        [MenuItem("Tools/Unity Vibe CLI/Debug Unity CLI", priority = 400)]
         private static void DebugUnityCLI()
         {
-            Debug.Log("=== Unity Vibe CLI Configuration ===");
+            Debug.Log("=== Vibe Unity Configuration ===");
             
             var sceneTypes = GetAvailableSceneTypes();
             Debug.Log($"Available Scene Types: {string.Join(", ", sceneTypes)}");
@@ -1836,7 +1846,6 @@ namespace UnityVibe.Editor
         /// <summary>
         /// Test method to validate CLI functionality
         /// </summary>
-        [MenuItem("Tools/Unity Vibe CLI/Test Unity CLI", priority = 401)]
         private static void TestUnityCLI()
         {
             Debug.Log("[UnityCLI Test] Starting CLI functionality test...");
@@ -1866,7 +1875,6 @@ namespace UnityVibe.Editor
         /// <summary>
         /// Test smart scene detection only
         /// </summary>
-        [MenuItem("Tools/Unity Vibe CLI/Test Smart Scene Detection", priority = 402)]
         private static void TestSmartSceneDetection()
         {
             Debug.Log("[UnityCLI Test] Testing smart scene detection...");
@@ -1885,33 +1893,31 @@ namespace UnityVibe.Editor
         }
         
         /// <summary>
-        /// Menu item to execute batch file from Unity editor
+        /// Execute batch file from Unity editor
         /// </summary>
-        [MenuItem("Tools/Unity Vibe CLI/Execute Batch File", priority = 410)]
         private static void ExecuteBatchFileFromMenu()
         {
             string path = EditorUtility.OpenFilePanel("Select Batch JSON File", Application.dataPath, "json");
             if (!string.IsNullOrEmpty(path))
             {
-                Debug.Log($"[UnityCLI] Executing batch file from menu: {path}");
+                Debug.Log($"[VibeUnityCLI] Executing batch file from menu: {path}");
                 bool success = ExecuteBatchFile(path);
                 if (success)
                 {
-                    Debug.Log("[UnityCLI] ✅ Batch file executed successfully from menu");
+                    Debug.Log("[VibeUnityCLI] ✅ Batch file executed successfully from menu");
                     EditorUtility.DisplayDialog("Batch Execution", "Batch file executed successfully!", "OK");
                 }
                 else
                 {
-                    Debug.LogError("[UnityCLI] ❌ Batch file execution failed");
+                    Debug.LogError("[VibeUnityCLI] ❌ Batch file execution failed");
                     EditorUtility.DisplayDialog("Batch Execution", "Batch file execution failed. Check console for details.", "OK");
                 }
             }
         }
         
         /// <summary>
-        /// Quick test to create canvas in current scene from menu
+        /// Quick test to create canvas in current scene
         /// </summary>
-        [MenuItem("Tools/Unity Vibe CLI/Quick Test - Add Canvas", priority = 411)]
         private static void QuickTestAddCanvas()
         {
             Debug.Log("[UnityCLI Test] Quick test - adding canvas to current scene");

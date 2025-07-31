@@ -1,7 +1,7 @@
 {
-    "name": "com.unityvibe.cli",
+    "name": "com.vibe.unity",
     "version": "1.0.0",
-    "displayName": "Unity Vibe CLI",
+    "displayName": "Vibe Unity",
     "description": "Command Line Interface tools for Unity development workflow automation. Provides scene creation, canvas management, and project analysis capabilities with WSL integration.",
     "unity": "2022.3",
     "unityRelease": "0f1",
@@ -16,9 +16,9 @@
         "wsl"
     ],
     "author": {
-        "name": "Unity Vibe CLI Team",
-        "email": "contact@unityvibe.com",
-        "url": "https://github.com/unity-vibe/unity-vibe-cli"
+        "name": "Vibe Unity Team",
+        "email": "contact@vibe-unity.com",
+        "url": "https://github.com/vibe-unity/vibe-unity"
     },
     "category": "Editor",
     "type": "tool",
@@ -31,11 +31,11 @@
     ],
     "repository": {
         "type": "git",
-        "url": "https://github.com/unity-vibe/unity-vibe-cli.git"
+        "url": "https://github.com/vibe-unity/vibe-unity.git"
     },
     "license": "MIT",
     "bugs": {
-        "url": "https://github.com/unity-vibe/unity-vibe-cli/issues"
+        "url": "https://github.com/vibe-unity/vibe-unity/issues"
     },
-    "homepage": "https://github.com/unity-vibe/unity-vibe-cli#readme"
+    "homepage": "https://github.com/vibe-unity/vibe-unity#readme"
 }

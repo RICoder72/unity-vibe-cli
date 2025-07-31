@@ -3,17 +3,17 @@ using UnityEditor;
 using UnityEngine;
 using System.IO;
 
-namespace UnityVibe.Editor
+namespace VibeUnity.Editor
 {
     /// <summary>
-    /// Handles automatic setup of Unity Vibe CLI when package is imported
+    /// Handles automatic setup of Vibe Unity when package is imported
     /// </summary>
     [InitializeOnLoad]
-    public static class UnityVibeSetup
+    public static class VibeUnitySetup
     {
-        private const string SETUP_COMPLETE_KEY = "UnityVibeCLI_SetupComplete";
+        private const string SETUP_COMPLETE_KEY = "VibeUnity_SetupComplete";
         
-        static UnityVibeSetup()
+        static VibeUnitySetup()
         {
             // Only run setup once per project
             if (!EditorPrefs.GetBool(SETUP_COMPLETE_KEY, false))
@@ -24,7 +24,7 @@ namespace UnityVibe.Editor
         
         private static void RunSetup()
         {
-            Debug.Log("[Unity Vibe CLI] Setting up CLI tools...");
+            Debug.Log("[Vibe Unity] Setting up CLI tools...");
             
             // Copy bash scripts to project root for WSL users
             CopyBashScriptsToProjectRoot();
@@ -53,7 +53,7 @@ namespace UnityVibe.Editor
                 if (File.Exists(sourceScript))
                 {
                     File.Copy(sourceScript, targetScript, true);
-                    Debug.Log($"[Unity Vibe CLI] Copied CLI script to: {targetScript}");
+                    Debug.Log($"[Vibe Unity] Copied CLI script to: {targetScript}");
                 }
                 
                 // Copy install script
@@ -64,12 +64,12 @@ namespace UnityVibe.Editor
                 {
                     Directory.CreateDirectory(Path.Combine(projectRoot, "Scripts"));
                     File.Copy(sourceInstaller, targetInstaller, true);
-                    Debug.Log($"[Unity Vibe CLI] Copied installer to: {targetInstaller}");
+                    Debug.Log($"[Vibe Unity] Copied installer to: {targetInstaller}");
                 }
             }
             catch (System.Exception e)
             {
-                Debug.LogWarning($"[Unity Vibe CLI] Could not copy bash scripts: {e.Message}");
+                Debug.LogWarning($"[Vibe Unity] Could not copy bash scripts: {e.Message}");
             }
         }
         
@@ -77,9 +77,9 @@ namespace UnityVibe.Editor
         {
             // Try to find the package in various locations
             string[] searchPaths = {
-                Path.Combine(Application.dataPath, "..", "Packages", "com.unityvibe.cli"),
-                Path.Combine(Application.dataPath, "..", "Library", "PackageCache", "com.unityvibe.cli@1.0.0"),
-                Path.Combine(Application.dataPath, "UnityVibeCLI") // Local package
+                Path.Combine(Application.dataPath, "..", "Packages", "com.vibe.unity"),
+                Path.Combine(Application.dataPath, "..", "Library", "PackageCache", "com.vibe.unity@1.0.0"),
+                Path.Combine(Application.dataPath, "VibeUnity") // Local package
             };
             
             foreach (string path in searchPaths)
@@ -98,11 +98,11 @@ namespace UnityVibe.Editor
             EditorApplication.delayCall += () =>
             {
                 bool showDialog = EditorUtility.DisplayDialog(
-                    "Unity Vibe CLI",
+                    "Vibe Unity",
                     "Unity Vibe CLI has been installed!\n\n" +
                     "You can now:\n" +
                     "• Use the C# API: CLI.CreateScene(), CLI.AddCanvas()\n" +
-                    "• Access Tools > Unity Vibe CLI menu\n" +
+                    "• Access Tools > Vibe Unity menu\n" +
                     "• WSL users: Run ./vibe-unity from project root\n\n" +
                     "Would you like to see the documentation?",
                     "Open Documentation",
@@ -111,17 +111,12 @@ namespace UnityVibe.Editor
                 
                 if (showDialog)
                 {
-                    Application.OpenURL("https://github.com/unity-vibe/unity-vibe-cli#readme");
+                    Application.OpenURL("https://github.com/RICoder72/vibe-unity#readme");
                 }
             };
         }
         
-        [MenuItem("Tools/Unity Vibe CLI/Reset Setup", priority = 500)]
-        private static void ResetSetup()
-        {
-            EditorPrefs.DeleteKey(SETUP_COMPLETE_KEY);
-            Debug.Log("[Unity Vibe CLI] Setup reset. Restart Unity to run setup again.");
-        }
+        // Reset setup functionality removed - menu consolidated in VibeUnityMenu.cs
     }
 }
 #endif

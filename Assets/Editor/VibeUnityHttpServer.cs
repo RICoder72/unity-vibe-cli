@@ -8,21 +8,23 @@ using System.Text;
 using System.Collections.Generic;
 using System.IO;
 
-namespace UnityVibe.Editor
+namespace VibeUnity.Editor
 {
     /// <summary>
-    /// HTTP Server for Unity Vibe CLI - Allows external command execution while Unity is running
+    /// HTTP Server for Vibe Unity - Allows external command execution while Unity is running
     /// This provides a REST API endpoint that the CLI can communicate with directly
     /// </summary>
     [InitializeOnLoad]
-    public static class UnityVibeHttpServer
+    public static class VibeUnityHttpServer
     {
         private static HttpListener listener;
         private static Thread listenerThread;
         private static bool isRunning = false;
+        
+        public static bool IsRunning => isRunning;
         private const int PORT = 9876;
         
-        static UnityVibeHttpServer()
+        static VibeUnityHttpServer()
         {
             EditorApplication.update += Initialize;
         }
@@ -30,15 +32,18 @@ namespace UnityVibe.Editor
         private static void Initialize()
         {
             EditorApplication.update -= Initialize;
-            StartServer();
+            // Check if enabled in preferences
+            if (VibeUnityMenu.IsHttpServerEnabled)
+            {
+                StartServerInternal();
+            }
         }
         
-        [MenuItem("Tools/Unity Vibe CLI/Start HTTP Server", priority = 430)]
-        private static void StartServer()
+        public static void StartServerInternal()
         {
             if (isRunning)
             {
-                Debug.Log("[UnityVibeHTTP] Server already running on port " + PORT);
+                Debug.Log("[VibeUnityHTTP] Server already running on port " + PORT);
                 return;
             }
             
@@ -52,20 +57,19 @@ namespace UnityVibe.Editor
                 listenerThread = new Thread(ListenForRequests);
                 listenerThread.Start();
                 
-                Debug.Log($"[UnityVibeHTTP] Server started on http://localhost:{PORT}/");
-                Debug.Log("[UnityVibeHTTP] CLI can now send commands directly to Unity");
+                Debug.Log($"[VibeUnityHTTP] Server started on http://localhost:{PORT}/");
+                Debug.Log("[VibeUnityHTTP] CLI can now send commands directly to Unity");
                 
                 EditorApplication.playModeStateChanged += OnPlayModeChanged;
-                EditorApplication.quitting += StopServer;
+                EditorApplication.quitting += StopServerInternal;
             }
             catch (Exception e)
             {
-                Debug.LogError($"[UnityVibeHTTP] Failed to start server: {e.Message}");
+                Debug.LogError($"[VibeUnityHTTP] Failed to start server: {e.Message}");
             }
         }
         
-        [MenuItem("Tools/Unity Vibe CLI/Stop HTTP Server", priority = 431)]
-        private static void StopServer()
+        public static void StopServerInternal()
         {
             if (!isRunning) return;
             
@@ -73,7 +77,7 @@ namespace UnityVibe.Editor
             listener?.Stop();
             listenerThread?.Join(1000);
             
-            Debug.Log("[UnityVibeHTTP] Server stopped");
+            Debug.Log("[VibeUnityHTTP] Server stopped");
         }
         
         private static void OnPlayModeChanged(PlayModeStateChange state)

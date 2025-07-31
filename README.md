@@ -1,4 +1,4 @@
-# Unity Vibe CLI
+# Vibe Unity
 
 A powerful Command Line Interface tool for Unity development workflow automation. Streamline your Unity development with CLI-based scene creation, canvas management, and project structure operations.
 
@@ -29,7 +29,7 @@ A powerful Command Line Interface tool for Unity development workflow automation
 
 1. Open Unity Package Manager
 2. Click the `+` button and select "Add package from git URL"
-3. Enter: `https://github.com/unity-vibe/unity-vibe-cli.git`
+3. Enter: `https://github.com/vibe-unity/vibe-unity.git`
 
 ### Method 2: Manual Installation
 
@@ -39,7 +39,7 @@ A powerful Command Line Interface tool for Unity development workflow automation
 
 ### Method 3: Unity Package
 
-1. Download the latest `.unitypackage` from [Releases](https://github.com/unity-vibe/unity-vibe-cli/releases)
+1. Download the latest `.unitypackage` from [Releases](https://github.com/vibe-unity/vibe-unity/releases)
 2. Import into your Unity project via `Assets > Import Package > Custom Package`
 
 ## 🐧 WSL Setup (Windows Users)
@@ -71,7 +71,7 @@ vibe-unity list-types
 **Requirements:**
 - Unity Hub installed in standard Windows location
 - WSL with bash or zsh shell
-- Unity project with Unity Vibe CLI package installed
+- Unity project with Vibe Unity package installed
 
 ## 🛠️ Quick Start
 
@@ -104,7 +104,7 @@ The package automatically sets up CLI scripts in your project root when imported
 ### Method 2: C# API (For Unity Editor scripts)
 
 ```csharp
-using UnityVibe.Editor;
+using VibeUnity.Editor;
 
 // Create a new scene
 CLI.CreateScene("MyScene", "Assets/Scenes", "DefaultGameObjects", true);
@@ -121,14 +121,14 @@ CLI.ListSceneTypes();
 ### Method 3: Unity Menu Integration
 
 Access tools via Unity's menu system:
-- **Tools > Unity Vibe CLI > Debug Unity CLI** - Show current configuration
-- **Tools > Unity Vibe CLI > Test Unity CLI** - Test CLI functionality
+- **Tools > Vibe Unity > Debug Unity CLI** - Show current configuration
+- **Tools > Vibe Unity > Test Unity CLI** - Test CLI functionality
 
 ### Method 4: Direct Unity Batch Mode (Advanced)
 
 ```bash
 # Advanced usage - call Unity directly  
-Unity -batchmode -quit -projectPath "path/to/project" -executeMethod UnityVibe.Editor.CLI.CreateSceneFromCommandLine MyScene Assets/Scenes DefaultGameObjects true
+Unity -batchmode -quit -projectPath "path/to/project" -executeMethod VibeUnity.Editor.CLI.CreateSceneFromCommandLine MyScene Assets/Scenes DefaultGameObjects true
 ```
 
 **Best for:** Advanced automation and build systems that need direct Unity control.
@@ -284,10 +284,10 @@ echo "Project setup complete!"
 
 ## 🎯 Unity Menu Integration
 
-Access Unity Vibe CLI features directly from Unity's menu:
+Access Vibe Unity features directly from Unity's menu:
 
-- **Tools > Unity Vibe CLI > Debug Unity CLI** - Show current configuration
-- **Tools > Unity Vibe CLI > Test Unity CLI** - Test CLI functionality
+- **Tools > Vibe Unity > Debug Unity CLI** - Show current configuration
+- **Tools > Vibe Unity > Test Unity CLI** - Test CLI functionality
 
 ## 🔍 Troubleshooting
 
@@ -321,20 +321,20 @@ vibe-unity add-canvas MainCanvas --mode ScreenSpaceOverlay --width 1920 --height
 **Expected Output:**
 ```bash
 $ vibe-unity create-scene MyNewScene Assets/Scenes/Test --type 3D --build
-Unity Vibe CLI - Creating Scene
+Vibe Unity - Creating Scene
 ================================
 Scene Name: MyNewScene
 Scene Path: Assets/Scenes/Test  
 Scene Type: 3D
 Add to Build: true
-Project Path: C:/repos/unity-vibe-cli
+Project Path: C:/repos/vibe-unity
 
 ✅ Scene created successfully: Assets/Scenes/Test/MyNewScene.unity
 
 $ vibe-unity list-types
-Unity Vibe CLI - Available Scene Types
+Vibe Unity - Available Scene Types
 ======================================
-Project Path: C:/repos/unity-vibe-cli
+Project Path: C:/repos/vibe-unity
 
 [UnityCLI] === Available Scene Types ===
 [UnityCLI] Available scene types: Empty, DefaultGameObjects, 2D, 3D, URP
@@ -386,9 +386,9 @@ CLI.TestUnityCLI();  // Tests CLI functionality
 
 ## 🤖 Claude Code Integration
 
-Unity Vibe CLI is designed to work seamlessly with Claude Code and other AI coding assistants. The automatic file watcher system ensures commands work even when Unity Editor is running.
+Vibe Unity is designed to work seamlessly with Claude Code and other AI coding assistants. The automatic file watcher system ensures commands work even when Unity Editor is running.
 
-### Why Unity Vibe CLI + Claude Code?
+### Why Vibe Unity + Claude Code?
 
 - **No Unity Restart Required**: Commands execute while Unity is running
 - **Automatic Adaptation**: CLI detects Unity state and chooses the best execution method
@@ -434,7 +434,7 @@ We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.
 
 ### Adding New Commands
 
-1. Add method to `UnityVibe.Editor.CLI` class
+1. Add method to `VibeUnity.Editor.CLI` class
 2. Create corresponding bash script in `Scripts/` directory
 3. Update documentation
 4. Add tests
@@ -451,10 +451,10 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📞 Support
 
-- **Issues**: [GitHub Issues](https://github.com/unity-vibe/unity-vibe-cli/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/unity-vibe/unity-vibe-cli/discussions)
-- **Email**: contact@unityvibe.com
+- **Issues**: [GitHub Issues](https://github.com/unity-vibe/vibe-unity/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/unity-vibe/vibe-unity/discussions)
+- **Email**: contact@vibe-unity.com
 
 ---
 
-**Made with ❤️ by the Unity Vibe CLI Team**
+**Made with ❤️ by the Vibe Unity Team**

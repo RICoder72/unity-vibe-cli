@@ -1,11 +1,11 @@
-# Unity Vibe CLI - Claude Code Integration Guide
+# Vibe Unity - Claude Code Integration Guide
 
 This guide is specifically for Claude Code users who want to create Unity scenes, UI elements, and other Unity content through command-line automation.
 
 ## Quick Start for Claude Code
 
 ### Installation
-1. Import the Unity Vibe CLI package into your Unity project
+1. Import the Vibe Unity package into your Unity project
 2. The package will automatically set up the file watcher system
 3. No additional configuration required!
 

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Unity Vibe CLI - Unified Command Interface
+# Vibe Unity - Unified Command Interface
 # Usage: vibe-unity <command> [options]
 # 
 # Commands:
@@ -45,7 +45,7 @@ write_session() {
     
     # Create session file if it doesn't exist
     if [[ ! -f "$SESSION_FILE" ]]; then
-        echo "# Unity Vibe CLI Session" > "$SESSION_FILE"
+        echo "# Vibe Unity Session" > "$SESSION_FILE"
         echo "# Created: $(date)" >> "$SESSION_FILE"
     fi
     
@@ -156,13 +156,13 @@ execute_unity_command() {
 
 # Show version information
 show_version() {
-    echo "Unity Vibe CLI v$VERSION"
+    echo "Vibe Unity v$VERSION"
     echo "A command-line interface for Unity development workflow automation"
 }
 
 # Show general help
 show_help() {
-    echo "Unity Vibe CLI - Unified Command Interface"
+    echo "Vibe Unity - Unified Command Interface"
     echo ""
     echo "USAGE:"
     echo "    vibe-unity <COMMAND> [OPTIONS]"
@@ -406,7 +406,7 @@ cmd_create_scene() {
         exit 1
     fi
     
-    echo "Unity Vibe CLI - Creating Scene"
+    echo "Vibe Unity - Creating Scene"
     echo "================================"
     echo "Scene Name: $scene_name"
     echo "Scene Path: $scene_path"
@@ -422,7 +422,7 @@ cmd_create_scene() {
         -batchmode \
         -quit \
         -projectPath "$(get_project_path)" \
-        -executeMethod UnityVibe.Editor.CLI.CreateSceneFromCommandLine \
+        -executeMethod VibeUnity.Editor.CLI.CreateSceneFromCommandLine \
         "$scene_name" \
         "$scene_path" \
         "$scene_type" \
@@ -486,12 +486,12 @@ cmd_list_types() {
         esac
     done
     
-    echo "Unity Vibe CLI - Available Scene Types"
+    echo "Vibe Unity - Available Scene Types"
     echo "======================================"
     echo "Project Path: $(get_project_path)"
     echo ""
     
-    execute_unity_command "UnityVibe.Editor.CLI.ListSceneTypesFromCommandLine"
+    execute_unity_command "VibeUnity.Editor.CLI.ListSceneTypesFromCommandLine"
     
     if [ $? -eq 0 ]; then
         echo ""
@@ -589,7 +589,7 @@ cmd_add_canvas() {
         exit 1
     fi
     
-    echo "Unity Vibe CLI - Adding Canvas"
+    echo "Vibe Unity - Adding Canvas"
     echo "=============================="
     echo "Canvas Name: $canvas_name"
     echo "Scene: ${scene_name:-"current"}"
@@ -606,7 +606,7 @@ cmd_add_canvas() {
         -batchmode \
         -quit \
         -projectPath "$(get_project_path)" \
-        -executeMethod UnityVibe.Editor.CLI.AddCanvasFromCommandLine \
+        -executeMethod VibeUnity.Editor.CLI.AddCanvasFromCommandLine \
         "$canvas_name" \
         "$scene_name" \
         "$render_mode" \
@@ -723,7 +723,7 @@ cmd_add_panel() {
         exit 1
     fi
     
-    echo "Unity Vibe CLI - Adding Panel"
+    echo "Vibe Unity - Adding Panel"
     echo "============================="
     echo "Panel Name: $panel_name"
     echo "Parent: ${parent_name:-"auto-detect"}"
@@ -738,7 +738,7 @@ cmd_add_panel() {
         -batchmode \
         -quit \
         -projectPath "$(get_project_path)" \
-        -executeMethod UnityVibe.Editor.CLI.AddPanelFromCommandLine \
+        -executeMethod VibeUnity.Editor.CLI.AddPanelFromCommandLine \
         "$panel_name" \
         "$parent_name" \
         "$scene_name" \
@@ -833,7 +833,7 @@ cmd_add_button() {
         exit 1
     fi
     
-    echo "Unity Vibe CLI - Adding Button"
+    echo "Vibe Unity - Adding Button"
     echo "=============================="
     echo "Button Name: $button_name"
     echo "Parent: ${parent_name:-"auto-detect"}"
@@ -848,7 +848,7 @@ cmd_add_button() {
         -batchmode \
         -quit \
         -projectPath "$(get_project_path)" \
-        -executeMethod UnityVibe.Editor.CLI.AddButtonFromCommandLine \
+        -executeMethod VibeUnity.Editor.CLI.AddButtonFromCommandLine \
         "$button_name" \
         "$parent_name" \
         "$button_text" \
@@ -948,7 +948,7 @@ cmd_add_text() {
         exit 1
     fi
     
-    echo "Unity Vibe CLI - Adding Text"
+    echo "Vibe Unity - Adding Text"
     echo "============================"
     echo "Text Name: $text_name"
     echo "Parent: ${parent_name:-"auto-detect"}"
@@ -964,7 +964,7 @@ cmd_add_text() {
         -batchmode \
         -quit \
         -projectPath "$(get_project_path)" \
-        -executeMethod UnityVibe.Editor.CLI.AddTextFromCommandLine \
+        -executeMethod VibeUnity.Editor.CLI.AddTextFromCommandLine \
         "$text_name" \
         "$parent_name" \
         "$text_content" \
@@ -986,7 +986,7 @@ cmd_add_text() {
 
 # Check Unity process status
 cmd_check_unity() {
-    echo "Unity Vibe CLI - Process Status Check"
+    echo "Vibe Unity - Process Status Check"
     echo "====================================="
     
     # Check for Unity processes
@@ -1055,7 +1055,7 @@ cmd_check_unity() {
 
 # Kill Unity processes
 cmd_kill_unity() {
-    echo "Unity Vibe CLI - Kill Unity Processes"
+    echo "Vibe Unity - Kill Unity Processes"
     echo "====================================="
     echo "⚠️  WARNING: This will forcefully terminate Unity processes!"
     echo ""
@@ -1159,7 +1159,7 @@ cmd_start_session() {
                 shift 2
                 ;;
             -h|--help)
-                echo "Start a new Unity Vibe CLI session with default parameters"
+                echo "Start a new Vibe Unity session with default parameters"
                 echo ""
                 echo "USAGE:"
                 echo "    vibe-unity start-session [OPTIONS]"
@@ -1191,7 +1191,7 @@ cmd_start_session() {
         esac
     done
     
-    echo "Unity Vibe CLI - Starting Session"
+    echo "Vibe Unity - Starting Session"
     echo "=================================="
     
     # Clear any existing session
@@ -1231,7 +1231,7 @@ cmd_show_session() {
         exit 0
     fi
     
-    echo "Unity Vibe CLI - Current Session"
+    echo "Vibe Unity - Current Session"
     echo "================================="
     echo "Session file: $SESSION_FILE"
     echo ""
@@ -1303,7 +1303,7 @@ cmd_set_parent() {
         exit 1
     fi
     
-    echo "Unity Vibe CLI - Set Parent"
+    echo "Vibe Unity - Set Parent"
     echo "==========================="
     
     if [[ -n "$parent" ]]; then
@@ -1320,7 +1320,7 @@ cmd_set_parent() {
 
 # Clear session command
 cmd_clear_session() {
-    echo "Unity Vibe CLI - Clear Session"
+    echo "Vibe Unity - Clear Session"
     echo "=============================="
     clear_session_file
 }
@@ -1433,7 +1433,7 @@ cmd_batch_file() {
         exit 1
     fi
     
-    echo "Unity Vibe CLI - Batch File Execution"
+    echo "Vibe Unity - Batch File Execution"
     echo "====================================="
     echo "JSON File: $json_file"
     echo "Validate Only: $validate_only"
@@ -1530,7 +1530,7 @@ cmd_batch_file() {
             -batchmode \
             -quit \
             -projectPath "$(get_project_path)" \
-            -executeMethod UnityVibe.Editor.CLI.ExecuteBatchFromCommandLine \
+            -executeMethod VibeUnity.Editor.CLI.ExecuteBatchFromCommandLine \
             "$json_file" \
             -logFile "$temp_log" 2>&1
         local exit_code=$?
@@ -1618,7 +1618,7 @@ cmd_help() {
             echo "⚠️  WARNING: Use with caution! This will forcefully terminate Unity processes."
             ;;
         help)
-            echo "Show help information for Unity Vibe CLI commands"
+            echo "Show help information for Vibe Unity commands"
             echo ""
             echo "USAGE:"
             echo "    vibe-unity help [COMMAND]"

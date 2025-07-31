@@ -25,7 +25,9 @@
       "Bash(rm:*)",
       "Bash(git rm:*)",
       "Bash(mv:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(git commit:*)",
+      "Bash(mkdir:*)"
     ],
     "deny": []
   }

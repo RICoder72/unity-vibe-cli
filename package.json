@@ -13,29 +13,22 @@
         "workflow",
         "development",
         "tools",
-        "wsl"
+        "wsl",
+        "editor"
     ],
     "author": {
-        "name": "Vibe Unity Team",
-        "email": "contact@vibe-unity.com",
-        "url": "https://github.com/vibe-unity/vibe-unity"
+        "name": "RICoder72",
+        "url": "https://github.com/RICoder72/vibe-unity"
     },
-    "category": "Editor",
+    "category": "Editor Extensions",
     "type": "tool",
-    "samples": [
-        {
-            "displayName": "Basic CLI Usage Examples",
-            "description": "Examples demonstrating basic CLI functionality for scene and canvas creation",
-            "path": "Samples~/BasicUsage"
-        }
-    ],
     "repository": {
         "type": "git",
-        "url": "https://github.com/vibe-unity/vibe-unity.git"
+        "url": "https://github.com/RICoder72/vibe-unity.git"
     },
     "license": "MIT",
     "bugs": {
-        "url": "https://github.com/vibe-unity/vibe-unity/issues"
+        "url": "https://github.com/RICoder72/vibe-unity/issues"
     },
-    "homepage": "https://github.com/vibe-unity/vibe-unity#readme"
+    "homepage": "https://github.com/RICoder72/vibe-unity#readme"
 }

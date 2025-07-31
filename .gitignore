@@ -140,3 +140,13 @@ crash.dmp*
 
 # Unity Vibe CLI command queue
 .vibe-commands/
+
+# Package-specific exclusions (should not be in UPM packages)
+[Pp]rojectSettings/
+[Pp]ackages/
+[Aa]ssets/
+*.json.meta
+batch-schema.json
+*-test.json
+example-*.json
+debug-*.json

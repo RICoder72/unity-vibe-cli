@@ -24,7 +24,8 @@
       "Bash(./vibe-unity:*)",
       "Bash(rm:*)",
       "Bash(git rm:*)",
-      "Bash(mv:*)"
+      "Bash(mv:*)",
+      "Bash(git push:*)"
     ],
     "deny": []
   }

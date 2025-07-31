@@ -117,6 +117,53 @@ using System.Linq;
 namespace UnityVibe.Editor
 {
     /// <summary>
+    /// Data structure for batch command JSON files
+    /// </summary>
+    [System.Serializable]
+    public class BatchCommandFile
+    {
+        public string version = "1.0";
+        public string description = "";
+        public BatchCommand[] commands;
+    }
+    
+    /// <summary>
+    /// Data structure for individual batch commands
+    /// </summary>
+    [System.Serializable]
+    public class BatchCommand
+    {
+        public string action;
+        public string name;
+        
+        // Scene creation fields
+        public string path;
+        public string type;
+        public bool addToBuild;
+        
+        // Canvas fields
+        public string scene;
+        public string renderMode;
+        public int referenceWidth;
+        public int referenceHeight;
+        public string scaleMode;
+        public int sortingOrder;
+        public float[] worldPosition;
+        
+        // UI element fields
+        public string parent;
+        public float width;
+        public float height;
+        public string anchor;
+        public float[] position;
+        
+        // Text/Button specific fields
+        public string text;
+        public int fontSize;
+        public string color;
+    }
+
+    /// <summary>
     /// Command Line Interface tools for Unity development workflow automation
     /// Provides scene creation, canvas management, and project analysis capabilities
     /// </summary>
@@ -1300,6 +1347,293 @@ namespace UnityVibe.Editor
         }
         
         /// <summary>
+        /// Command line entry point for batch file execution
+        /// Usage: Unity -batchmode -quit -executeMethod UnityVibe.Editor.CLI.ExecuteBatchFromCommandLine json_file_path
+        /// </summary>
+        public static void ExecuteBatchFromCommandLine()
+        {
+            string[] args = System.Environment.GetCommandLineArgs();
+            
+            int executeMethodIndex = System.Array.FindIndex(args, arg => arg == "-executeMethod");
+            if (executeMethodIndex == -1 || executeMethodIndex + 2 >= args.Length)
+            {
+                Debug.LogError("[UnityCLI] Invalid arguments. Usage: json_file_path");
+                return;
+            }
+            
+            string jsonFilePath = args[executeMethodIndex + 2];
+            
+            Debug.Log($"[UnityCLI] Executing batch file: {jsonFilePath}");
+            
+            bool success = ExecuteBatchFile(jsonFilePath);
+            
+            if (success)
+            {
+                Debug.Log($"[UnityCLI] ✅ Batch file executed successfully");
+            }
+            else
+            {
+                Debug.LogError($"[UnityCLI] ❌ Failed to execute batch file");
+                UnityEditor.EditorApplication.Exit(1);
+            }
+        }
+        
+        /// <summary>
+        /// Executes commands from a JSON batch file
+        /// </summary>
+        /// <param name="jsonFilePath">Path to the JSON batch file</param>
+        /// <returns>True if all commands executed successfully</returns>
+        public static bool ExecuteBatchFile(string jsonFilePath)
+        {
+            try
+            {
+                if (!System.IO.File.Exists(jsonFilePath))
+                {
+                    Debug.LogError($"[UnityCLI] Batch file not found: {jsonFilePath}");
+                    return false;
+                }
+                
+                string jsonContent = System.IO.File.ReadAllText(jsonFilePath);
+                
+                // Parse JSON using Unity's built-in JSON utility
+                BatchCommandFile batchFile;
+                try
+                {
+                    batchFile = JsonUtility.FromJson<BatchCommandFile>(jsonContent);
+                }
+                catch (System.Exception e)
+                {
+                    Debug.LogError($"[UnityCLI] Failed to parse JSON: {e.Message}");
+                    return false;
+                }
+                
+                if (batchFile == null || batchFile.commands == null || batchFile.commands.Length == 0)
+                {
+                    Debug.LogError("[UnityCLI] No commands found in batch file");
+                    return false;
+                }
+                
+                Debug.Log($"[UnityCLI] Batch file loaded: {batchFile.commands.Length} commands");
+                if (!string.IsNullOrEmpty(batchFile.description))
+                {
+                    Debug.Log($"[UnityCLI] Description: {batchFile.description}");
+                }
+                
+                // Execute commands sequentially
+                for (int i = 0; i < batchFile.commands.Length; i++)
+                {
+                    var command = batchFile.commands[i];
+                    Debug.Log($"[UnityCLI] Executing command {i + 1}/{batchFile.commands.Length}: {command.action}");
+                    
+                    bool commandSuccess = ExecuteBatchCommand(command);
+                    if (!commandSuccess)
+                    {
+                        Debug.LogError($"[UnityCLI] Command {i + 1} failed: {command.action}");
+                        return false;
+                    }
+                }
+                
+                // Save all scenes after batch execution
+                UnityEditor.SceneManagement.EditorSceneManager.SaveOpenScenes();
+                AssetDatabase.Refresh();
+                
+                return true;
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"[UnityCLI] Exception executing batch file: {e.Message}");
+                return false;
+            }
+        }
+        
+        /// <summary>
+        /// Executes a single batch command
+        /// </summary>
+        private static bool ExecuteBatchCommand(BatchCommand command)
+        {
+            switch (command.action.ToLower())
+            {
+                case "create-scene":
+                    return ExecuteCreateSceneCommand(command);
+                case "add-canvas":
+                    return ExecuteAddCanvasCommand(command);
+                case "add-panel":
+                    return ExecuteAddPanelCommand(command);
+                case "add-button":
+                    return ExecuteAddButtonCommand(command);
+                case "add-text":
+                    return ExecuteAddTextCommand(command);
+                default:
+                    Debug.LogError($"[UnityCLI] Unknown batch command: {command.action}");
+                    return false;
+            }
+        }
+        
+        /// <summary>
+        /// Executes create-scene batch command
+        /// </summary>
+        private static bool ExecuteCreateSceneCommand(BatchCommand command)
+        {
+            string sceneName = command.name;
+            string scenePath = !string.IsNullOrEmpty(command.path) ? command.path : "Assets/Scenes";
+            string sceneType = !string.IsNullOrEmpty(command.type) ? command.type : "DefaultGameObjects";
+            bool addToBuild = command.addToBuild;
+            
+            return CreateScene(sceneName, scenePath, sceneType, addToBuild);
+        }
+        
+        /// <summary>
+        /// Executes add-canvas batch command
+        /// </summary>
+        private static bool ExecuteAddCanvasCommand(BatchCommand command)
+        {
+            string canvasName = command.name;
+            string sceneName = command.scene;
+            string renderMode = !string.IsNullOrEmpty(command.renderMode) ? command.renderMode : "ScreenSpaceOverlay";
+            int width = command.referenceWidth > 0 ? command.referenceWidth : 1920;
+            int height = command.referenceHeight > 0 ? command.referenceHeight : 1080;
+            string scaleMode = !string.IsNullOrEmpty(command.scaleMode) ? command.scaleMode : "ScaleWithScreenSize";
+            int sortingOrder = command.sortingOrder;
+            
+            Vector3? worldPosition = null;
+            if (command.worldPosition != null && command.worldPosition.Length == 3)
+            {
+                worldPosition = new Vector3(command.worldPosition[0], command.worldPosition[1], command.worldPosition[2]);
+            }
+            
+            return AddCanvas(canvasName, sceneName, renderMode, width, height, scaleMode, sortingOrder, worldPosition);
+        }
+        
+        /// <summary>
+        /// Executes add-panel batch command
+        /// </summary>
+        private static bool ExecuteAddPanelCommand(BatchCommand command)
+        {
+            string panelName = command.name;
+            string parentName = command.parent;
+            string sceneName = command.scene;
+            float width = command.width > 0 ? command.width : 200f;
+            float height = command.height > 0 ? command.height : 200f;
+            string anchor = !string.IsNullOrEmpty(command.anchor) ? command.anchor : "MiddleCenter";
+            
+            bool success = AddPanel(panelName, parentName, sceneName, width, height, anchor);
+            
+            // Apply position offset if specified
+            if (success && command.position != null && command.position.Length >= 2)
+            {
+                GameObject panelGO = FindGameObjectInActiveScene(panelName);
+                if (panelGO != null)
+                {
+                    RectTransform rectTransform = panelGO.GetComponent<RectTransform>();
+                    if (rectTransform != null)
+                    {
+                        Vector2 offset = new Vector2(command.position[0], command.position[1]);
+                        rectTransform.anchoredPosition = offset;
+                    }
+                }
+            }
+            
+            return success;
+        }
+        
+        /// <summary>
+        /// Executes add-button batch command
+        /// </summary>
+        private static bool ExecuteAddButtonCommand(BatchCommand command)
+        {
+            string buttonName = command.name;
+            string parentName = command.parent;
+            string sceneName = command.scene;
+            string buttonText = !string.IsNullOrEmpty(command.text) ? command.text : "Button";
+            float width = command.width > 0 ? command.width : 160f;
+            float height = command.height > 0 ? command.height : 30f;
+            string anchor = !string.IsNullOrEmpty(command.anchor) ? command.anchor : "MiddleCenter";
+            
+            bool success = AddButton(buttonName, parentName, sceneName, buttonText, width, height, anchor);
+            
+            // Apply position offset if specified
+            if (success && command.position != null && command.position.Length >= 2)
+            {
+                GameObject buttonGO = FindGameObjectInActiveScene(buttonName);
+                if (buttonGO != null)
+                {
+                    RectTransform rectTransform = buttonGO.GetComponent<RectTransform>();
+                    if (rectTransform != null)
+                    {
+                        Vector2 offset = new Vector2(command.position[0], command.position[1]);
+                        rectTransform.anchoredPosition = offset;
+                    }
+                }
+            }
+            
+            return success;
+        }
+        
+        /// <summary>
+        /// Executes add-text batch command
+        /// </summary>
+        private static bool ExecuteAddTextCommand(BatchCommand command)
+        {
+            string textName = command.name;
+            string parentName = command.parent;
+            string sceneName = command.scene;
+            string textContent = !string.IsNullOrEmpty(command.text) ? command.text : "New Text";
+            int fontSize = command.fontSize > 0 ? command.fontSize : 14;
+            float width = command.width > 0 ? command.width : 200f;
+            float height = command.height > 0 ? command.height : 50f;
+            string anchor = !string.IsNullOrEmpty(command.anchor) ? command.anchor : "MiddleCenter";
+            
+            bool success = AddText(textName, parentName, sceneName, textContent, fontSize, width, height, anchor);
+            
+            // Apply position offset if specified
+            if (success && command.position != null && command.position.Length >= 2)
+            {
+                GameObject textGO = FindGameObjectInActiveScene(textName);
+                if (textGO != null)
+                {
+                    RectTransform rectTransform = textGO.GetComponent<RectTransform>();
+                    if (rectTransform != null)
+                    {
+                        Vector2 offset = new Vector2(command.position[0], command.position[1]);
+                        rectTransform.anchoredPosition = offset;
+                    }
+                    
+                    // Apply color if specified
+                    if (!string.IsNullOrEmpty(command.color))
+                    {
+                        Text textComponent = textGO.GetComponent<Text>();
+                        if (textComponent != null && ColorUtility.TryParseHtmlString(command.color, out Color color))
+                        {
+                            textComponent.color = color;
+                        }
+                    }
+                }
+            }
+            
+            return success;
+        }
+        
+        /// <summary>
+        /// Finds a GameObject by name in the active scene
+        /// </summary>
+        private static GameObject FindGameObjectInActiveScene(string name)
+        {
+            Scene activeScene = SceneManager.GetActiveScene();
+            GameObject[] rootObjects = activeScene.GetRootGameObjects();
+            
+            foreach (GameObject rootObj in rootObjects)
+            {
+                GameObject found = FindGameObjectRecursive(rootObj, name);
+                if (found != null)
+                {
+                    return found;
+                }
+            }
+            
+            return null;
+        }
+        
+        /// <summary>
         /// Command line entry point for help
         /// Usage: Unity -batchmode -quit -executeMethod UnityVibe.Editor.CLI.ShowHelpFromCommandLine
         /// </summary>
@@ -1314,6 +1648,10 @@ namespace UnityVibe.Editor
             Debug.Log("[UnityCLI] ADD CANVAS:");
             Debug.Log("[UnityCLI]   unity-add-canvas <canvas_name> <render_mode> [width] [height] [scale_mode]");
             Debug.Log("[UnityCLI]   Example: unity-add-canvas UICanvas ScreenSpaceOverlay 1920 1080 ScaleWithScreenSize");
+            Debug.Log("[UnityCLI] ");
+            Debug.Log("[UnityCLI] BATCH FILE:");
+            Debug.Log("[UnityCLI]   unity-batch-file <json_file_path>");
+            Debug.Log("[UnityCLI]   Example: unity-batch-file ui-setup.json");
             Debug.Log("[UnityCLI] ");
             Debug.Log("[UnityCLI] LIST SCENE TYPES:");
             Debug.Log("[UnityCLI]   unity-list-types");
@@ -1414,6 +1752,55 @@ namespace UnityVibe.Editor
             else
             {
                 Debug.LogWarning("[UnityCLI Test] ❌ Smart detection returned null");
+            }
+        }
+        
+        /// <summary>
+        /// Menu item to execute batch file from Unity editor
+        /// </summary>
+        [MenuItem("Tools/Unity Vibe CLI/Execute Batch File", priority = 410)]
+        private static void ExecuteBatchFileFromMenu()
+        {
+            string path = EditorUtility.OpenFilePanel("Select Batch JSON File", Application.dataPath, "json");
+            if (!string.IsNullOrEmpty(path))
+            {
+                Debug.Log($"[UnityCLI] Executing batch file from menu: {path}");
+                bool success = ExecuteBatchFile(path);
+                if (success)
+                {
+                    Debug.Log("[UnityCLI] ✅ Batch file executed successfully from menu");
+                    EditorUtility.DisplayDialog("Batch Execution", "Batch file executed successfully!", "OK");
+                }
+                else
+                {
+                    Debug.LogError("[UnityCLI] ❌ Batch file execution failed");
+                    EditorUtility.DisplayDialog("Batch Execution", "Batch file execution failed. Check console for details.", "OK");
+                }
+            }
+        }
+        
+        /// <summary>
+        /// Quick test to create canvas in current scene from menu
+        /// </summary>
+        [MenuItem("Tools/Unity Vibe CLI/Quick Test - Add Canvas", priority = 411)]
+        private static void QuickTestAddCanvas()
+        {
+            Debug.Log("[UnityCLI Test] Quick test - adding canvas to current scene");
+            
+            Scene currentScene = SceneManager.GetActiveScene();
+            Debug.Log($"[UnityCLI Test] Current scene: {currentScene.name} (path: {currentScene.path})");
+            
+            bool success = AddCanvas("QuickTestCanvas", null, "ScreenSpaceOverlay", 1920, 1080, "ScaleWithScreenSize");
+            
+            if (success)
+            {
+                Debug.Log("[UnityCLI Test] ✅ Canvas added successfully from menu");
+                EditorUtility.DisplayDialog("Quick Test", "Canvas added successfully!", "OK");
+            }
+            else
+            {
+                Debug.LogError("[UnityCLI Test] ❌ Failed to add canvas");
+                EditorUtility.DisplayDialog("Quick Test", "Failed to add canvas. Check console for details.", "OK");
             }
         }
         

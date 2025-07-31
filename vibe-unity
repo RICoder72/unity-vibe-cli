@@ -97,13 +97,37 @@ execute_unity_command() {
     # Use a temporary file to capture all output
     local temp_log=$(mktemp)
     
-    "$UNITY_PATH" \
-        -batchmode \
-        -quit \
-        -projectPath "$PROJECT_PATH" \
-        -executeMethod "$method" \
-        $args \
-        -logFile "$temp_log" 2>&1
+    # Check if Unity is running by trying to connect
+    local unity_running=false
+    if command -v powershell.exe &> /dev/null; then
+        local unity_processes=$(powershell.exe "Get-Process | Where-Object {\$_.ProcessName -like '*Unity*'} | Measure-Object | Select-Object -ExpandProperty Count" 2>/dev/null | tr -d '\r' || echo "0")
+        if [[ "${unity_processes:-0}" -gt 0 ]]; then
+            unity_running=true
+        fi
+    fi
+    
+    if [[ "$unity_running" == "true" ]]; then
+        echo "🔄 Unity is running - executing in editor mode"
+        # Execute in editor mode (no -batchmode -quit)
+        "$UNITY_PATH" \
+            -projectPath "$PROJECT_PATH" \
+            -executeMethod "$method" \
+            $args &
+        
+        # Wait a moment for execution
+        sleep 2
+        return 0
+    else
+        echo "🔄 Unity not running - executing in batch mode"
+        # Execute in batch mode
+        "$UNITY_PATH" \
+            -batchmode \
+            -quit \
+            -projectPath "$PROJECT_PATH" \
+            -executeMethod "$method" \
+            $args \
+            -logFile "$temp_log" 2>&1
+    fi
     
     local exit_code=$?
     
@@ -150,6 +174,7 @@ show_help() {
     echo "    add-panel       Add UI panel to scene"
     echo "    add-button      Add UI button to scene"
     echo "    add-text        Add UI text element to scene"
+    echo "    batch-file      Execute commands from JSON batch file"
     echo "    start-session   Start a new session with default parameters"
     echo "    show-session    Show current session parameters"
     echo "    set-parent      Update the default parent in current session"
@@ -170,6 +195,7 @@ show_help() {
     echo "    vibe-unity add-panel MenuPanel --parent MainCanvas --width 300 --height 400"
     echo "    vibe-unity add-button PlayButton --parent MenuPanel --text \"Play Game\""
     echo "    vibe-unity add-text HeaderText --parent MenuPanel --text \"Welcome!\" --size 24"
+    echo "    vibe-unity batch-file ui-setup.json"
     echo "    vibe-unity check-unity"
     echo "    vibe-unity help create-scene"
     echo ""
@@ -1299,6 +1325,210 @@ cmd_clear_session() {
     clear_session_file
 }
 
+# Show help for batch-file command
+show_batch_file_help() {
+    echo "Execute commands from JSON batch file"
+    echo ""
+    echo "USAGE:"
+    echo "    vibe-unity batch-file <JSON_FILE> [OPTIONS]"
+    echo ""
+    echo "ARGUMENTS:"
+    echo "    <JSON_FILE>     Path to JSON batch file containing commands"
+    echo ""
+    echo "OPTIONS:"
+    echo "    --validate-only     Validate JSON structure without executing"
+    echo "    --dry-run          Show what would be executed without running"
+    echo "    -h, --help         Show this help message"
+    echo ""
+    echo "JSON FILE FORMAT:"
+    echo "    {"
+    echo "      \"commands\": ["
+    echo "        {"
+    echo "          \"action\": \"create-scene\","
+    echo "          \"name\": \"MyScene\","
+    echo "          \"path\": \"Assets/Scenes\""
+    echo "        },"
+    echo "        {"
+    echo "          \"action\": \"add-canvas\","
+    echo "          \"name\": \"MainCanvas\","
+    echo "          \"scene\": \"MyScene\""
+    echo "        }"
+    echo "      ]"
+    echo "    }"
+    echo ""
+    echo "AVAILABLE ACTIONS:"
+    echo "    create-scene    Create a new Unity scene"
+    echo "    add-canvas      Add canvas to scene"
+    echo "    add-panel       Add UI panel"
+    echo "    add-button      Add UI button"
+    echo "    add-text        Add UI text element"
+    echo ""
+    echo "EXAMPLES:"
+    echo "    vibe-unity batch-file ui-setup.json"
+    echo "    vibe-unity batch-file menu-ui.json --dry-run"
+    echo "    vibe-unity batch-file batch.json --validate-only"
+    echo ""
+    echo "See batch-schema.json for complete schema documentation."
+}
+
+# Batch file command
+cmd_batch_file() {
+    local json_file=""
+    local validate_only=false
+    local dry_run=false
+    
+    # Parse arguments
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --validate-only)
+                validate_only=true
+                shift
+                ;;
+            --dry-run)
+                dry_run=true
+                shift
+                ;;
+            -h|--help)
+                show_batch_file_help
+                exit 0
+                ;;
+            -*)
+                echo "Error: Unknown option $1"
+                echo "Use 'vibe-unity batch-file --help' for usage information."
+                exit 1
+                ;;
+            *)
+                if [[ -z "$json_file" ]]; then
+                    json_file="$1"
+                else
+                    echo "Error: Too many arguments"
+                    echo "Use 'vibe-unity batch-file --help' for usage information."
+                    exit 1
+                fi
+                shift
+                ;;
+        esac
+    done
+    
+    # Validate required arguments
+    if [[ -z "$json_file" ]]; then
+        echo "Error: Missing required JSON file path"
+        echo "Use 'vibe-unity batch-file --help' for usage information."
+        exit 1
+    fi
+    
+    # Check if file exists
+    if [[ ! -f "$json_file" ]]; then
+        echo "Error: JSON file not found: $json_file"
+        exit 1
+    fi
+    
+    echo "Unity Vibe CLI - Batch File Execution"
+    echo "====================================="
+    echo "JSON File: $json_file"
+    echo "Validate Only: $validate_only"
+    echo "Dry Run: $dry_run"
+    echo "Project Path: $(get_project_path)"
+    echo ""
+    
+    # Validate JSON syntax first
+    if ! command -v jq >/dev/null 2>&1; then
+        echo "⚠️  Warning: 'jq' not found. Skipping JSON validation."
+        echo "   Install jq for better JSON validation and parsing."
+    else
+        if ! jq . "$json_file" >/dev/null 2>&1; then
+            echo "❌ Invalid JSON syntax in file: $json_file"
+            jq . "$json_file" 2>&1 || true
+            exit 1
+        fi
+        echo "✅ JSON syntax is valid"
+    fi
+    
+    if [[ "$validate_only" == "true" ]]; then
+        echo "✅ Validation complete. File is ready for execution."
+        exit 0
+    fi
+    
+    # Execute Unity command with batch file
+    local temp_log=$(mktemp)
+    
+    if [[ "$dry_run" == "true" ]]; then
+        echo ""
+        echo "🔍 DRY RUN - Commands that would be executed:"
+        echo "=============================================="
+        
+        # Parse and display commands without executing
+        if command -v jq >/dev/null 2>&1; then
+            jq -r '.commands[] | "  \(.action): \(.name // "N/A")"' "$json_file" 2>/dev/null || echo "Unable to parse commands for preview"
+        else
+            echo "  (Install jq for command preview)"
+        fi
+        
+        echo ""
+        echo "Use 'vibe-unity batch-file $json_file' to execute these commands."
+        exit 0
+    fi
+    
+    # Check if Unity is running
+    local unity_running=false
+    if command -v powershell.exe &> /dev/null; then
+        local unity_processes=$(powershell.exe "Get-Process | Where-Object {\$_.ProcessName -like '*Unity*'} | Measure-Object | Select-Object -ExpandProperty Count" 2>/dev/null | tr -d '\r' || echo "0")
+        if [[ "${unity_processes:-0}" -gt 0 ]]; then
+            unity_running=true
+        fi
+    fi
+    
+    if [[ "$unity_running" == "true" ]]; then
+        echo "🔄 Unity is running - executing batch in editor mode"
+        # Execute in editor mode (no -batchmode -quit)
+        "$UNITY_PATH" \
+            -projectPath "$(get_project_path)" \
+            -executeMethod UnityVibe.Editor.CLI.ExecuteBatchFromCommandLine \
+            "$json_file" &
+        
+        # Wait for execution to complete
+        sleep 3
+        local exit_code=0
+    else
+        echo "🔄 Unity not running - executing batch in batch mode"
+        # Execute in batch mode
+        "$UNITY_PATH" \
+            -batchmode \
+            -quit \
+            -projectPath "$(get_project_path)" \
+            -executeMethod UnityVibe.Editor.CLI.ExecuteBatchFromCommandLine \
+            "$json_file" \
+            -logFile "$temp_log" 2>&1
+        local exit_code=$?
+    fi
+    
+    # Show Unity CLI output
+    if [[ -f "$temp_log" ]]; then
+        grep -E "\[UnityCLI\]" "$temp_log" 2>/dev/null || true
+    fi
+    
+    if [ $exit_code -eq 0 ]; then
+        echo ""
+        echo "✅ Batch file executed successfully"
+        rm -f "$temp_log"
+    else
+        echo ""
+        echo "❌ Failed to execute batch file"
+        
+        # Show error details
+        if [[ -f "$temp_log" ]]; then
+            echo ""
+            echo "🔍 Unity Error Details:"
+            echo "======================="
+            grep -E "(Exception|Error|Failed|Cannot|Unable)" "$temp_log" | head -10 || echo "No specific error details found"
+            echo ""
+            echo "💡 Full Unity log saved to: $temp_log"
+            echo "   Use 'cat $temp_log' to view complete output"
+        fi
+        exit 1
+    fi
+}
+
 # Help command
 cmd_help() {
     if [[ $# -eq 0 ]]; then
@@ -1321,6 +1551,9 @@ cmd_help() {
             ;;
         add-text)
             show_add_text_help
+            ;;
+        batch-file)
+            show_batch_file_help
             ;;
         list-types)
             echo "List available scene types for your Unity installation"
@@ -1408,6 +1641,9 @@ main() {
             ;;
         add-text)
             cmd_add_text "$@"
+            ;;
+        batch-file)
+            cmd_batch_file "$@"
             ;;
         start-session)
             cmd_start_session "$@"

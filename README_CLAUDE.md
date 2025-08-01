@@ -57,6 +57,46 @@ File-watching system that processes JSON batch commands to create Unity scenes a
 { "action": "add-cube", "name": "RedCube", "position": [0, 0, 0], "rotation": [0, 45, 0], "scale": [1, 1, 1] }
 ```
 
+### Component Management
+```json
+// Add component to existing GameObject
+{ "action": "add-component", "name": "GameController", "componentType": "Rigidbody" }
+
+// Add component with parameters
+{
+  "action": "add-component", 
+  "name": "GameController", 
+  "componentType": "Rigidbody",
+  "parameters": [
+    { "name": "mass", "value": "2.5", "type": "float" },
+    { "name": "useGravity", "value": "true", "type": "bool" },
+    { "name": "drag", "value": "0.1", "type": "float" }
+  ]
+}
+
+// Add AudioSource with configuration
+{
+  "action": "add-component",
+  "name": "SoundObject", 
+  "componentType": "AudioSource",
+  "parameters": [
+    { "name": "volume", "value": "0.8", "type": "float" },
+    { "name": "playOnAwake", "value": "false", "type": "bool" }
+  ]
+}
+
+// Add custom component with GameObject reference
+{
+  "action": "add-component",
+  "name": "Player",
+  "componentType": "SceneController", 
+  "parameters": [
+    { "name": "Camera", "value": "Main Camera", "type": "GameObject" },
+    { "name": "speed", "value": "10", "type": "float" }
+  ]
+}
+```
+
 ## Common Properties
 
 ### UI Elements
@@ -82,6 +122,20 @@ File-watching system that processes JSON batch commands to create Unity scenes a
 - `horizontal`, `vertical` - Enable scrolling directions (boolean)
 - `scrollbarVisibility` - "AutoHideAndExpandViewport", "AutoHide", "Permanent"
 - `scrollSensitivity` - Scroll speed multiplier (float)
+
+### Component Management
+- `componentType` - Name of component class to add (string)
+- `parameters` - Array of parameter objects to set on component
+  - `name` - Field or property name on the component
+  - `value` - String representation of the value
+  - `type` - Value type: "string", "int", "float", "bool", "GameObject", "Component"
+
+### Supported Component Types
+- **Physics**: `Rigidbody`, `BoxCollider`, `SphereCollider`, `MeshCollider`
+- **Audio**: `AudioSource`, `AudioListener`
+- **Rendering**: `Camera`, `Light`, `MeshRenderer`
+- **Custom Scripts**: Any MonoBehaviour-derived class by name
+- **Aliases**: `rigidbody` → `Rigidbody`, `collider` → `BoxCollider`
 
 ## Example: Complete Menu System
 ```json
@@ -125,8 +179,32 @@ File-watching system that processes JSON batch commands to create Unity scenes a
 }
 ```
 
+## Scene Persistence
+- **Individual Commands**: Scenes are automatically saved after each successful command
+- **Batch Operations**: Scene saving is optimized - only saved once at the end of the batch
+- **Component Modifications**: All component additions and parameter changes are automatically persisted
+- **Error Handling**: Failed operations don't trigger scene saving to maintain integrity
+
+## Recent Updates (v1.2.0)
+
+### ✨ New Features
+- **TextMeshPro Integration**: All UI text components now use TextMeshProUGUI for better rendering
+- **Component Attachment System**: Add any Unity component to GameObjects via JSON
+- **Parameter Assignment**: Set component properties and fields using reflection
+- **Smart Scene Saving**: Automatic scene persistence with batch optimization
+- **Enhanced Error Handling**: Comprehensive logging and rollback on failures
+
+### 🧪 Test Results (All Passed ✅)
+- **TextMeshPro UI Test**: UI elements with TMP components - SUCCESS
+- **Component Attachment Test**: Rigidbody, Colliders with parameters - SUCCESS  
+- **Scene Saving Test**: Persistence verification - SUCCESS
+- **Comprehensive Integration Test**: All features combined - SUCCESS
+
 ## Status
 - ✅ HTTP Server: Disabled
 - ✅ CLI Commands: Disabled  
 - ✅ File Watcher: Active
 - ✅ Logging: Enabled (.log files)
+- ✅ Auto Scene Saving: Enabled
+- ✅ TextMeshPro Integration: Active
+- ✅ Component System: Fully Functional

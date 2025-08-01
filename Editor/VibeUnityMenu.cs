@@ -100,11 +100,11 @@ namespace VibeUnity.Editor
         {
             if (isFileWatcherEnabled)
             {
-                CLI.EnableFileWatcher();
+                VibeUnitySystem.EnableFileWatcher();
             }
             else
             {
-                CLI.DisableFileWatcher();
+                VibeUnitySystem.DisableFileWatcher();
             }
         }
         

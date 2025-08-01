@@ -5,6 +5,38 @@ All notable changes to Unity Vibe CLI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2025-08-01
+
+### Added
+- Complete development workflow automation with test-workflow.sh script
+- Automatic Unity window focusing and compilation monitoring
+- Smart compilation detection via Unity Editor.log parsing
+- Integrated testing workflow that ensures compilation completion before testing
+
+### Changed
+- Re-enabled file watcher system by default (can be toggled via Tools menu)
+- Improved development workflow to eliminate timing issues between code changes and testing
+- Enhanced main thread dispatcher system for reliable Editor API execution
+
+### Technical Details
+- Added PowerShell-based window management for Unity/Ubuntu focus switching
+- Implemented real-time Unity Editor.log monitoring for compilation completion detection
+- Created comprehensive test workflow script with timeout protection and progress reporting
+- Maintained thread-safe operation queuing from previous version
+
+## [1.1.1] - 2025-08-01
+
+### Fixed
+- Fixed threading issue with FileSystemWatcher where Unity Editor API calls were being made from background threads
+- Added main thread dispatcher to properly queue Editor API operations from file watcher events
+- Resolved "GetAllRegisteredPackages can only be called from the main thread" error
+
+### Technical Details
+- Added ConcurrentQueue for thread-safe operation queuing
+- Implemented EditorApplication.update handler for main thread processing
+- Modified file watcher event handlers to use main thread dispatcher
+- All Unity Editor API calls now properly execute on the main thread
+
 ## [1.1.0] - 2025-08-01
 
 ### Changed

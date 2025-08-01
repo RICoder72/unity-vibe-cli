@@ -3,11 +3,12 @@ using UnityEditor;
 using System.IO;
 using System.Collections.Generic;
 using System.Linq;
+using System.Collections.Concurrent;
 
 namespace VibeUnity.Editor
 {
     /// <summary>
-    /// System utilities and helper methods for Vibe Unity
+    /// System utilities and helper methods for Vibe Unity - v1.2.0
     /// </summary>
     public static class VibeUnitySystem
     {
@@ -19,6 +20,11 @@ namespace VibeUnity.Editor
         private static readonly string COMMAND_QUEUE_DIR = Path.Combine(Application.dataPath, "..", ".vibe-commands");
         private static FileSystemWatcher fileWatcher;
         private static readonly object lockObject = new object();
+        
+        /// <summary>
+        /// Queue for main thread operations to avoid threading issues with Unity Editor APIs
+        /// </summary>
+        private static readonly ConcurrentQueue<System.Action> mainThreadQueue = new ConcurrentQueue<System.Action>();
         
         /// <summary>
         /// Initialize the file watcher system
@@ -33,11 +39,45 @@ namespace VibeUnity.Editor
                 Debug.Log($"[VibeUnity] Created command queue directory: {COMMAND_QUEUE_DIR}");
             }
             
+            // Enable file watcher by default - can be toggled via menu
             EnableFileWatcher();
+            
+            // Set up the main thread dispatcher for thread-safe operations
+            EditorApplication.update += ProcessMainThreadQueue;
             
             // Also check for existing files on startup
             CheckForCommandFiles();
         }
+        
+        /// <summary>
+        /// Processes queued main thread operations
+        /// </summary>
+        private static void ProcessMainThreadQueue()
+        {
+            while (mainThreadQueue.TryDequeue(out System.Action action))
+            {
+                try
+                {
+                    action?.Invoke();
+                }
+                catch (System.Exception e)
+                {
+                    Debug.LogError($"[VibeUnity] Error processing main thread operation: {e.Message}");
+                }
+            }
+        }
+        
+        /// <summary>
+        /// Queues an action to be executed on the main thread
+        /// </summary>
+        public static void QueueMainThreadAction(System.Action action)
+        {
+            if (action != null)
+            {
+                mainThreadQueue.Enqueue(action);
+            }
+        }
+        
         
         /// <summary>
         /// Checks for existing command files and processes them
@@ -57,7 +97,9 @@ namespace VibeUnity.Editor
                     if (IsFileLocked(file))
                         continue;
                         
-                    ProcessCommandFile(file);
+                    // Queue the file processing on the main thread
+                    string filePath = file; // Capture for closure
+                    QueueMainThreadAction(() => ProcessCommandFile(filePath));
                 }
             }
             catch (System.Exception e)
@@ -128,7 +170,11 @@ namespace VibeUnity.Editor
             if (fileWatcher == null && Directory.Exists(COMMAND_QUEUE_DIR))
             {
                 fileWatcher = new FileSystemWatcher(COMMAND_QUEUE_DIR, "*.json");
-                fileWatcher.Created += (sender, e) => ProcessCommandFile(e.FullPath);
+                fileWatcher.Created += (sender, e) => {
+                    // Queue the file processing on the main thread to avoid threading issues
+                    string filePath = e.FullPath; // Capture for closure
+                    QueueMainThreadAction(() => ProcessCommandFile(filePath));
+                };
                 fileWatcher.EnableRaisingEvents = true;
                 Debug.Log("[VibeUnity] File watcher enabled");
             }
@@ -146,6 +192,9 @@ namespace VibeUnity.Editor
                 fileWatcher = null;
                 Debug.Log("[VibeUnity] File watcher disabled");
             }
+            
+            // Remove the main thread dispatcher
+            EditorApplication.update -= ProcessMainThreadQueue;
         }
         
         #endregion

@@ -1,7 +1,9 @@
 {
     "name": "VibeUnity.Editor",
     "rootNamespace": "VibeUnity.Editor",
-    "references": [],
+    "references": [
+        "Unity.TextMeshPro"
+    ],
     "includePlatforms": [
         "Editor"
     ],

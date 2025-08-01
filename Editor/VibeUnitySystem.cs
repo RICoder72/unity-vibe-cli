@@ -27,7 +27,7 @@ namespace VibeUnity.Editor
         private static readonly ConcurrentQueue<System.Action> mainThreadQueue = new ConcurrentQueue<System.Action>();
         
         /// <summary>
-        /// Initialize the file watcher system
+        /// Initialize the file watcher system and scene state hooks
         /// </summary>
         [InitializeOnLoadMethod]
         public static void InitializeFileWatcher()
@@ -39,11 +39,17 @@ namespace VibeUnity.Editor
                 Debug.Log($"[VibeUnity] Created command queue directory: {COMMAND_QUEUE_DIR}");
             }
             
+            // Set up claude-compile-check script symlink
+            SetupClaudeCompileCheckScript();
+            
             // Enable file watcher by default - can be toggled via menu
             EnableFileWatcher();
             
             // Set up the main thread dispatcher for thread-safe operations
             EditorApplication.update += ProcessMainThreadQueue;
+            
+            // Set up scene state auto-generation hooks
+            InitializeSceneStateHooks();
             
             // Also check for existing files on startup
             CheckForCommandFiles();
@@ -393,6 +399,166 @@ namespace VibeUnity.Editor
             catch (System.Exception e)
             {
                 Debug.LogWarning($"[VibeUnity] Error during cleanup: {e.Message}");
+            }
+        }
+        
+        #endregion
+        
+        #region Scene State Auto-Generation Hooks
+        
+        private static bool sceneStateHooksInitialized = false;
+        
+        /// <summary>
+        /// Initialize scene state auto-generation hooks
+        /// </summary>
+        private static void InitializeSceneStateHooks()
+        {
+            if (sceneStateHooksInitialized)
+                return;
+                
+            // Hook into scene save events to automatically generate state files
+            UnityEditor.SceneManagement.EditorSceneManager.sceneSaved += OnSceneSaved;
+            
+            sceneStateHooksInitialized = true;
+            Debug.Log("[VibeUnity] Scene state auto-generation hooks initialized");
+        }
+        
+        /// <summary>
+        /// Called when a scene is saved - automatically generates scene state file
+        /// </summary>
+        private static void OnSceneSaved(UnityEngine.SceneManagement.Scene scene)
+        {
+            try
+            {
+                // Only generate state files for scenes that are actually saved to disk
+                if (string.IsNullOrEmpty(scene.path))
+                    return;
+                    
+                Debug.Log($"[VibeUnity] Auto-generating scene state for saved scene: {scene.name}");
+                
+                // Generate state file in a background operation to avoid blocking save
+                mainThreadQueue.Enqueue(() =>
+                {
+                    try
+                    {
+                        if (VibeUnitySceneExporter.ExportActiveSceneState())
+                        {
+                            Debug.Log($"[VibeUnity] ✅ Auto-generated scene state file: {scene.name}.state.json");
+                        }
+                        else
+                        {
+                            Debug.LogWarning($"[VibeUnity] ⚠️ Failed to auto-generate scene state for: {scene.name}");
+                        }
+                    }
+                    catch (System.Exception e)
+                    {
+                        Debug.LogWarning($"[VibeUnity] ⚠️ Exception during auto scene state generation: {e.Message}");
+                    }
+                });
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"[VibeUnity] Error in scene save hook: {e.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// Cleanup scene state hooks when shutting down
+        /// </summary>
+        [UnityEditor.Callbacks.DidReloadScripts]
+        private static void OnScriptsReloaded()
+        {
+            // Re-initialize hooks after script reload
+            InitializeSceneStateHooks();
+        }
+        
+        #endregion
+        
+        #region Claude Compile Check Script Setup
+        
+        /// <summary>
+        /// Sets up the claude-compile-check.sh script symlink for claude-code integration
+        /// </summary>
+        private static void SetupClaudeCompileCheckScript()
+        {
+            try
+            {
+                string projectRoot = Directory.GetParent(Application.dataPath).FullName;
+                string packageScriptPath = Path.Combine(Application.dataPath, "..", "Packages", "com.ricoder.vibe-unity", "Scripts", "claude-compile-check.sh");
+                string projectScriptPath = Path.Combine(projectRoot, "claude-compile-check.sh");
+                
+                // Check if package script exists
+                if (!File.Exists(packageScriptPath))
+                {
+                    Debug.LogWarning($"[VibeUnity] Claude compile check script not found at: {packageScriptPath}");
+                    return;
+                }
+                
+                // Check if symlink already exists and points to correct location
+                if (File.Exists(projectScriptPath))
+                {
+                    try
+                    {
+                        // On Windows/WSL, we'll use a copy instead of symlink for compatibility
+                        var existingContent = File.ReadAllText(projectScriptPath);
+                        var packageContent = File.ReadAllText(packageScriptPath);
+                        
+                        if (existingContent == packageContent)
+                        {
+                            // Script is up to date
+                            return;
+                        }
+                        else
+                        {
+                            // Update the script
+                            File.Copy(packageScriptPath, projectScriptPath, true);
+                            Debug.Log("[VibeUnity] Updated claude-compile-check.sh script in project root");
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        Debug.LogWarning($"[VibeUnity] Failed to update claude-compile-check.sh: {e.Message}");
+                        return;
+                    }
+                }
+                else
+                {
+                    // Copy script to project root
+                    try
+                    {
+                        File.Copy(packageScriptPath, projectScriptPath);
+                        
+                        // Make it executable if on Unix-like system
+                        if (Environment.OSVersion.Platform == PlatformID.Unix || 
+                            Environment.OSVersion.Platform == PlatformID.MacOSX)
+                        {
+                            var process = new System.Diagnostics.Process
+                            {
+                                StartInfo = new System.Diagnostics.ProcessStartInfo
+                                {
+                                    FileName = "chmod",
+                                    Arguments = "+x " + projectScriptPath,
+                                    UseShellExecute = false,
+                                    CreateNoWindow = true
+                                }
+                            };
+                            process.Start();
+                            process.WaitForExit();
+                        }
+                        
+                        Debug.Log("[VibeUnity] ✅ Installed claude-compile-check.sh script for claude-code integration");
+                        Debug.Log($"[VibeUnity] Script location: {projectScriptPath}");
+                        Debug.Log("[VibeUnity] Usage: ./claude-compile-check.sh [--include-warnings]");
+                    }
+                    catch (Exception e)
+                    {
+                        Debug.LogError($"[VibeUnity] Failed to install claude-compile-check.sh script: {e.Message}");
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[VibeUnity] Error setting up claude-compile-check script: {e.Message}");
             }
         }
         

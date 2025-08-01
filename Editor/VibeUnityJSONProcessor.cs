@@ -104,6 +104,28 @@ namespace VibeUnity.Editor
                 AssetDatabase.Refresh();
                 logCapture.AppendLine("✅ Scenes saved and asset database refreshed");
                 
+                // Generate scene state artifact after batch processing
+                logCapture.AppendLine("Generating scene state artifact...");
+                try
+                {
+                    if (VibeUnitySceneExporter.ExportActiveSceneState())
+                    {
+                        logCapture.AppendLine("✅ Scene state artifact generated successfully");
+                        logCapture.AppendLine("   └─ State file saved alongside scene file");
+                        logCapture.AppendLine("   └─ Coverage analysis report generated");
+                    }
+                    else
+                    {
+                        logCapture.AppendLine("⚠️ Warning: Scene state artifact generation failed");
+                        logCapture.AppendLine("   └─ Check console for export error details");
+                    }
+                }
+                catch (System.Exception e)
+                {
+                    logCapture.AppendLine($"⚠️ Warning: Exception during scene state export: {e.Message}");
+                    logCapture.AppendLine("   └─ Batch processing completed successfully despite export issue");
+                }
+                
                 return true;
             }
             catch (System.Exception e)

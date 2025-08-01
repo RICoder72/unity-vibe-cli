@@ -5,6 +5,64 @@ All notable changes to Unity Vibe CLI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2025-08-01
+
+### Added
+- **Scene State System**: Complete scene export/import functionality using JSON state files
+  - Export Unity scenes to comprehensive `.state.json` files stored alongside scene files
+  - Import and rebuild scenes from JSON state with full component reconstruction
+  - Scene state files serve as the authoritative source of truth for scene structure
+- **Coverage Analysis & Gap Detection**: Advanced analysis of scene export/import capabilities
+  - Real-time gap detection during scene export identifying unsupported components and features
+  - Detailed coverage reports showing supported vs unsupported components with percentages
+  - Structured logging of missing features with severity levels (Critical, Warning, Info)
+  - Development roadmap generation based on most frequently missing components
+- **Unity Editor Integration**: Comprehensive menu system for scene state management
+  - `Tools > Vibe Unity > Scene State > Export Current Scene` - Manual scene state export
+  - `Tools > Vibe Unity > Scene State > Import from State File...` - Scene import from JSON
+  - `Tools > Vibe Unity > Scene State > Show Coverage Report` - View latest coverage analysis
+  - `Tools > Vibe Unity > Scene State > Open Coverage Directory` - Browse analysis reports
+- **Automatic State Generation**: Scene state files automatically generated on scene save and batch processing
+  - Auto-export triggered by Unity's scene save events
+  - Integrated into existing JSON batch processing workflow
+  - Background processing to avoid blocking Unity Editor operations
+- **Comprehensive Data Structures**: Complete scene representation with full component detail
+  - Scene metadata, settings, and render pipeline information
+  - GameObject hierarchy with parent-child relationships and transform data
+  - Component introspection with property values and asset references
+  - UI-specific data for Canvas, RectTransform, and UI components
+  - Asset reference tracking for materials, textures, and fonts
+- **Claude-Code Compilation Validation**: Script for automated Unity compilation checking
+  - `claude-compile-check.sh` for structured error/warning reporting
+  - Automatic script deployment on package initialization
+  - Unity window focus management for compilation triggering
+  - Structured output with file:line error locations
+
+### Changed
+- Enhanced JSON batch processing to automatically generate scene state artifacts after successful operations
+- Extended development workflow to include scene state validation and gap analysis
+- Updated Unity Editor menu system with new Scene State submenu organization
+- Improved component coverage tracking with support for 15+ component types including UI, 3D primitives, Camera, and Audio
+
+### Technical Details
+- Added `VibeUnitySceneState.cs` with comprehensive data structures for JSON serialization
+- Implemented `VibeUnitySceneExporter.cs` with complete scene scanning and gap detection
+- Created `VibeUnitySceneImporter.cs` for full scene reconstruction from JSON state
+- Enhanced `VibeUnitySystem.cs` with automatic scene save hooks and state generation
+- Added `VibeUnityDocumentationUpdater.cs` for automatic CLAUDE.md updates
+- Coverage analysis generates reports in `.vibe-commands/coverage-analysis/` directory
+- Import logs saved to `.vibe-commands/import-logs/` for debugging and validation
+- Scene state files follow naming convention `[SceneName].state.json` alongside Unity scene files
+- Full support for UI components (Canvas, Button, Text, ScrollView, Image, TextMeshPro)
+- Component property introspection using reflection with type-safe value conversion
+
+### For Claude-Code Integration
+- Scene state JSON files provide human-readable scene structure for AI analysis
+- Gap detection identifies exactly which components need implementation for full scene rebuilding
+- Coverage reports guide package development priorities based on real scene usage
+- State files enable version control of scene structure with meaningful diffs
+- Import functionality allows claude-code to generate scenes by creating JSON state files
+- Compilation validator provides fast feedback loop for script changes
 ## [1.2.0] - 2025-08-01
 
 ### Added

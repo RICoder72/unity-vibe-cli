@@ -5,6 +5,13 @@ All notable changes to Unity Vibe CLI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.1] - 2025-08-01
+
+### Fixed
+- **Compilation Issues**: Fixed missing `using System;` directive in VibeUnitySystem.cs causing compilation errors
+- **Script Compatibility**: Fixed Windows line endings (CRLF) in claude-compile-check.sh bash script for proper Linux/WSL execution
+- **Asset Tracking**: Added missing Unity .meta files for proper asset tracking and version control
+
 ## [1.3.0] - 2025-08-01
 
 ### Added
@@ -32,11 +39,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Component introspection with property values and asset references
   - UI-specific data for Canvas, RectTransform, and UI components
   - Asset reference tracking for materials, textures, and fonts
-- **Claude-Code Compilation Validation**: Script for automated Unity compilation checking
-  - `claude-compile-check.sh` for structured error/warning reporting
-  - Automatic script deployment on package initialization
-  - Unity window focus management for compilation triggering
-  - Structured output with file:line error locations
 
 ### Changed
 - Enhanced JSON batch processing to automatically generate scene state artifacts after successful operations
@@ -49,7 +51,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Implemented `VibeUnitySceneExporter.cs` with complete scene scanning and gap detection
 - Created `VibeUnitySceneImporter.cs` for full scene reconstruction from JSON state
 - Enhanced `VibeUnitySystem.cs` with automatic scene save hooks and state generation
-- Added `VibeUnityDocumentationUpdater.cs` for automatic CLAUDE.md updates
 - Coverage analysis generates reports in `.vibe-commands/coverage-analysis/` directory
 - Import logs saved to `.vibe-commands/import-logs/` for debugging and validation
 - Scene state files follow naming convention `[SceneName].state.json` alongside Unity scene files
@@ -62,7 +63,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Coverage reports guide package development priorities based on real scene usage
 - State files enable version control of scene structure with meaningful diffs
 - Import functionality allows claude-code to generate scenes by creating JSON state files
-- Compilation validator provides fast feedback loop for script changes
+
 ## [1.2.0] - 2025-08-01
 
 ### Added

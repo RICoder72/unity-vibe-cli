@@ -507,7 +507,7 @@ namespace VibeUnity.Editor
             }
             
             // Auto-detect canvas
-            Canvas[] canvases = UnityEngine.Object.FindObjectsOfType<Canvas>();
+            Canvas[] canvases = UnityEngine.Object.FindObjectsByType<Canvas>(FindObjectsSortMode.None);
             if (canvases.Length > 0)
             {
                 return canvases[0].gameObject;

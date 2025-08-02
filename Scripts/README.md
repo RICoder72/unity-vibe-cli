@@ -8,11 +8,15 @@ This directory contains scripts for enhanced Unity development workflow automati
 
 ### Features
 - **Smart Window Management**: Focuses Unity window to trigger compilation, then returns focus to terminal
+- **Project-Aware Window Detection**: Automatically detects current project name and finds matching Unity window
+- **Multi-Unity Support**: Handles multiple Unity instances by finding the correct project window
 - **Real-time Log Monitoring**: Watches Unity's Editor.log for compilation completion signals
 - **Precise Error Parsing**: Extracts C# compilation errors with file:line locations
 - **Structured Output**: Machine-readable format for automation
 - **Warning Detection**: Optional warning reporting with `--include-warnings` flag
-- **Timeout Protection**: 45-second timeout with progress reporting
+- **Smart Timeout Handling**: Checks compilation logs after timeout and retries if needed
+- **Retry Logic**: Up to 2 retries if no compilation activity is detected
+- **Nothing-to-Compile Detection**: Properly handles cases where all scripts are up-to-date
 
 ### Usage
 
@@ -39,7 +43,7 @@ WARNINGS: [count]
 DETAILS:
   [file:line] Error message
   [file:line] WARNING: Warning message
-SCRIPT_VERSION: 1.3.0
+SCRIPT_VERSION: 1.3.1
 ```
 
 ### Exit Codes
@@ -55,7 +59,7 @@ SCRIPT_VERSION: 1.3.0
 STATUS: SUCCESS
 ERRORS: 0
 WARNINGS: 0
-SCRIPT_VERSION: 1.3.0
+SCRIPT_VERSION: 1.3.1
 ```
 
 #### Error Case
@@ -67,7 +71,7 @@ DETAILS:
   [./Packages/com.ricoder.vibe-unity/Editor/MyScript.cs:25] 'GameObject' does not contain a definition for 'NonExistentMethod'
   [./Assets/Scripts/PlayerController.cs:42] Cannot implicitly convert type 'string' to 'int'
   [./Assets/Scripts/GameManager.cs:15] WARNING: Variable 'unusedVar' is assigned but its value is never used
-SCRIPT_VERSION: 1.3.0
+SCRIPT_VERSION: 1.3.1
 ```
 
 ### Integration with Claude-Code

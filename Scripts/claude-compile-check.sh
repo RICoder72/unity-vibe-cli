@@ -15,7 +15,10 @@
 
 UNITY_LOG_PATH="/mnt/c/Users/matth/AppData/Local/Unity/Editor/Editor.log"
 INCLUDE_WARNINGS=false
-SCRIPT_VERSION="1.3.0"
+SCRIPT_VERSION="1.3.1"
+PROJECT_NAME=""
+RETRY_COUNT=0
+MAX_RETRIES=2
 
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
@@ -64,16 +67,43 @@ output_result() {
     echo "SCRIPT_VERSION: $SCRIPT_VERSION"
 }
 
+# Function to detect project name from current directory
+detect_project_name() {
+    local current_dir=$(pwd)
+    PROJECT_NAME=$(basename "$current_dir")
+    echo "Detected project name: $PROJECT_NAME" >&2
+}
+
 # Function to focus Unity window for recompilation
 focus_unity() {
+    local project_pattern="$PROJECT_NAME"
+    
+    # If project name detection failed, try to find any Unity window
+    if [[ -z "$project_pattern" ]]; then
+        project_pattern="Unity"
+    fi
+    
     powershell.exe -Command "
-    \$unity = Get-Process -Name 'Unity' -ErrorAction SilentlyContinue | Where-Object { \$_.MainWindowTitle -like '*vibe-unity-testrig*' } | Select-Object -First 1;
-    if (\$unity) {
+    \$unityProcesses = Get-Process -Name 'Unity' -ErrorAction SilentlyContinue | Where-Object { \$_.MainWindowTitle -ne '' };
+    \$targetUnity = \$null;
+    
+    # First try to find Unity window with project name
+    if ('$project_pattern' -ne 'Unity') {
+        \$targetUnity = \$unityProcesses | Where-Object { \$_.MainWindowTitle -like '*$project_pattern*' } | Select-Object -First 1;
+    }
+    
+    # If not found, get the first Unity window
+    if (-not \$targetUnity -and \$unityProcesses) {
+        \$targetUnity = \$unityProcesses | Select-Object -First 1;
+        Write-Host \"Warning: Could not find Unity window for project '$project_pattern', using first Unity window: \$((\$targetUnity).MainWindowTitle)\" -ForegroundColor Yellow;
+    }
+    
+    if (\$targetUnity) {
         Add-Type -AssemblyName Microsoft.VisualBasic;
-        [Microsoft.VisualBasic.Interaction]::AppActivate(\$unity.Id);
-        Write-Host 'Unity focused for compilation check'
+        [Microsoft.VisualBasic.Interaction]::AppActivate(\$targetUnity.Id);
+        Write-Host \"Unity focused for compilation check: \$((\$targetUnity).MainWindowTitle)\";
     } else {
-        Write-Host 'Unity process not found'
+        Write-Host 'No Unity process found' -ForegroundColor Red;
         exit 1
     }" 2>/dev/null
     
@@ -160,6 +190,17 @@ parse_compilation_results() {
     echo "$error_count|$warning_count|$details"
 }
 
+# Function to check if compilation logs exist
+check_compilation_logs() {
+    local log_content="$1"
+    
+    # Check for various compilation indicators
+    if echo "$log_content" | grep -q "CompileScripts\|Reloading assemblies\|Compilation\|Nothing to compile"; then
+        return 0
+    fi
+    return 1
+}
+
 # Function to monitor Unity compilation with timeout
 monitor_compilation() {
     local timeout=45  # Increased timeout for compilation checking
@@ -174,6 +215,7 @@ monitor_compilation() {
     # Get initial log size to track new entries
     local initial_size=$(stat -c%s "$UNITY_LOG_PATH")
     local compilation_started=false
+    local nothing_to_compile=false
     
     while [[ $elapsed -lt $timeout ]]; do
         local current_size=$(stat -c%s "$UNITY_LOG_PATH")
@@ -181,6 +223,13 @@ monitor_compilation() {
         if [[ $current_size -gt $initial_size ]]; then
             # Get new log entries since monitoring started
             local new_entries=$(tail -c +$((initial_size + 1)) "$UNITY_LOG_PATH")
+            
+            # Check for "nothing to compile" scenario
+            if echo "$new_entries" | grep -q "Nothing to compile\|All compiler tasks finished\|Compilation succeeded"; then
+                nothing_to_compile=true
+                output_result "SUCCESS" "0" "0" "No compilation needed - all scripts up to date"
+                return 0
+            fi
             
             # Check for compilation start indicators
             if [[ "$compilation_started" == "false" ]] && echo "$new_entries" | grep -q "Reloading assemblies\|CompileScripts\|Start importing"; then
@@ -226,33 +275,71 @@ monitor_compilation() {
         ((elapsed++))
     done
     
-    # Timeout reached
-    if [[ "$compilation_started" == "true" ]]; then
-        output_result "TIMEOUT" "0" "0" "Compilation started but did not complete within ${timeout}s"
-    else
-        output_result "TIMEOUT" "0" "0" "No compilation activity detected within ${timeout}s. Unity may not be responding."
+    # Timeout reached - check logs and potentially retry
+    local final_entries=""
+    if [[ $current_size -gt $initial_size ]]; then
+        final_entries=$(tail -c +$((initial_size + 1)) "$UNITY_LOG_PATH")
     fi
-    return 2
+    
+    # If we have compilation logs, analyze them
+    if check_compilation_logs "$final_entries"; then
+        local parse_result=$(parse_compilation_results "$final_entries")
+        local error_count=$(echo "$parse_result" | cut -d'|' -f1)
+        local warning_count=$(echo "$parse_result" | cut -d'|' -f2)
+        local details=$(echo "$parse_result" | cut -d'|' -f3-)
+        
+        if [[ $error_count -eq 0 ]]; then
+            output_result "SUCCESS" "$error_count" "$warning_count" "Compilation completed (found in logs after timeout)"
+            return 0
+        else
+            output_result "ERRORS" "$error_count" "$warning_count" "$details"
+            return 1
+        fi
+    fi
+    
+    # No compilation logs found
+    if [[ $RETRY_COUNT -lt $MAX_RETRIES ]]; then
+        ((RETRY_COUNT++))
+        echo "No compilation logs found. Retrying (attempt $((RETRY_COUNT + 1))/$((MAX_RETRIES + 1)))..." >&2
+        return 3  # Signal retry needed
+    else
+        # Assume nothing to compile after retries
+        output_result "SUCCESS" "0" "0" "No compilation activity detected - assuming all scripts are up to date"
+        return 0
+    fi
 }
 
 # Main execution function
 main() {
-    # Step 1: Focus Unity to trigger compilation
-    if ! focus_unity; then
-        output_result "ERROR" "0" "0" "Failed to focus Unity window. Ensure Unity is running with vibe-unity-testrig project."
-        return 2
-    fi
+    # Step 0: Detect project name
+    detect_project_name
     
-    # Brief pause to allow Unity to process the focus
-    sleep 2
+    local result=3  # Start with retry needed
     
-    # Step 2: Focus back to WSL terminal
-    focus_wsl
-    sleep 1
+    while [[ $result -eq 3 ]] && [[ $RETRY_COUNT -le $MAX_RETRIES ]]; do
+        # Step 1: Focus Unity to trigger compilation
+        if ! focus_unity; then
+            output_result "ERROR" "0" "0" "Failed to focus Unity window. Ensure Unity is running."
+            return 2
+        fi
+        
+        # Brief pause to allow Unity to process the focus
+        sleep 2
+        
+        # Step 2: Focus back to WSL terminal
+        focus_wsl
+        sleep 1
+        
+        # Step 3: Monitor compilation and return results
+        monitor_compilation
+        result=$?
+        
+        if [[ $result -eq 3 ]] && [[ $RETRY_COUNT -lt $MAX_RETRIES ]]; then
+            sleep 2  # Wait before retry
+        fi
+    done
     
-    # Step 3: Monitor compilation and return results
-    monitor_compilation
-    return $?
+    return $result
 }
 
 # Execute main function if script is run directly

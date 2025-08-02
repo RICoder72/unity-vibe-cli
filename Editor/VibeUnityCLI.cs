@@ -708,7 +708,7 @@ namespace VibeUnity.Editor
         /// <summary>
         /// Sets parameters on a component using reflection
         /// </summary>
-        private static bool SetComponentParameters(Component component, ComponentParameter[] parameters, System.Text.StringBuilder logCapture = null)
+        private static bool SetComponentParameters(Component component, VibeUnityGameObjects.ComponentParameter[] parameters, System.Text.StringBuilder logCapture = null)
         {
             return VibeUnityGameObjects.SetComponentParameters(component, parameters, logCapture);
         }

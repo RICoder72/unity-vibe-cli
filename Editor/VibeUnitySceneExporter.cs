@@ -81,21 +81,14 @@ namespace VibeUnity.Editor
                     outputPath = scenePath;
                 }
                 
-                // Export the scene state
-                SceneState sceneState = ExportSceneToState(activeScene);
-                
-                // Serialize to JSON
-                string jsonContent = JsonUtility.ToJson(sceneState, true);
+                // Export the scene state manually as JSON
+                string jsonContent = ExportSceneToJsonManually(activeScene);
                 
                 // Write to file
                 File.WriteAllText(outputPath, jsonContent);
                 
-                // Generate gap analysis report
-                GenerateGapAnalysisReport(sceneState, outputPath);
-                
-                Debug.Log($"[VibeUnitySceneExporter] ✅ Scene state exported: {outputPath}");
-                Debug.Log($"[VibeUnitySceneExporter] Coverage: {sceneState.coverageReport.summary.coveragePercentage:F1}% " +
-                         $"({sceneState.coverageReport.summary.supportedComponents}/{sceneState.coverageReport.summary.totalComponents} components)");
+                Debug.Log($"[VibeUnitySceneExporter] ✅ Scene state exported (manual JSON): {outputPath}");
+                Debug.Log($"[VibeUnitySceneExporter] File size: {new FileInfo(outputPath).Length} bytes");
                 
                 // Refresh asset database to show new file
                 AssetDatabase.Refresh();
@@ -111,37 +104,272 @@ namespace VibeUnity.Editor
         }
         
         /// <summary>
-        /// Exports a scene to a SceneState object
+        /// Exports scene directly to JSON string with manual building (ULTRA-MINIMALIST)
+        /// </summary>
+        private static string ExportSceneToJsonManually(Scene scene)
+        {
+            var json = new StringBuilder();
+            json.AppendLine("{");
+            json.AppendLine("  \"version\": \"1.0\",");
+            json.AppendLine($"  \"sceneName\": \"{EscapeJsonString(scene.name)}\",");
+            json.AppendLine($"  \"exportTimestamp\": \"{DateTime.Now:yyyy-MM-dd HH:mm:ss}\",");
+            json.AppendLine("  \"gameObjects\": [");
+            
+            GameObject[] rootObjects = scene.GetRootGameObjects();
+            bool isFirst = true;
+            
+            for (int i = 0; i < rootObjects.Length; i++)
+            {
+                ExportGameObjectToJsonManually(rootObjects[i], "", json, ref isFirst, 0);
+            }
+            
+            json.AppendLine();
+            json.AppendLine("  ]");
+            json.Append("}");
+            
+            return json.ToString();
+        }
+        
+        /// <summary>
+        /// Recursively exports GameObject to JSON manually (ENHANCED: all objects + transform + scripts + UI text)
+        /// </summary>
+        private static void ExportGameObjectToJsonManually(GameObject gameObject, string parentPath, StringBuilder json, ref bool isFirst, int depth)
+        {
+            string currentPath = string.IsNullOrEmpty(parentPath) ? gameObject.name : $"{parentPath}/{gameObject.name}";
+            
+            // Get ALL script components (MonoBehaviour derivatives)
+            Component[] components = gameObject.GetComponents<Component>();
+            var allScripts = new List<string>();
+            
+            foreach (Component component in components)
+            {
+                if (component != null && component is MonoBehaviour)
+                {
+                    allScripts.Add(component.GetType().Name);
+                }
+            }
+            
+            // Extract UI text content
+            string uiText = ExtractUIText(gameObject);
+            
+            // Export ALL GameObjects
+            if (!isFirst)
+            {
+                json.AppendLine(",");
+            }
+            isFirst = false;
+            
+            string indent = new string(' ', 4); // 2 spaces base + 2 for array
+            json.AppendLine($"{indent}{{");
+            json.AppendLine($"{indent}  \"name\": \"{EscapeJsonString(gameObject.name)}\",");
+            json.AppendLine($"{indent}  \"path\": \"{EscapeJsonString(currentPath)}\",");
+            json.AppendLine($"{indent}  \"active\": {gameObject.activeInHierarchy.ToString().ToLower()},");
+            
+            // Add basic transform data for scene recreation
+            Transform transform = gameObject.transform;
+            Vector3 pos = transform.localPosition;
+            Vector3 rot = transform.localEulerAngles;
+            Vector3 scale = transform.localScale;
+            
+            json.AppendLine($"{indent}  \"position\": [{pos.x:F3}, {pos.y:F3}, {pos.z:F3}],");
+            json.AppendLine($"{indent}  \"rotation\": [{rot.x:F3}, {rot.y:F3}, {rot.z:F3}],");
+            json.Append($"{indent}  \"scale\": [{scale.x:F3}, {scale.y:F3}, {scale.z:F3}]");
+            
+            // Add UI text content if present
+            if (!string.IsNullOrEmpty(uiText))
+            {
+                json.AppendLine(",");
+                json.Append($"{indent}  \"text\": \"{EscapeJsonString(uiText)}\"");
+            }
+            
+            // Include ALL script components if there are any
+            if (allScripts.Count > 0)
+            {
+                json.AppendLine(",");
+                json.AppendLine($"{indent}  \"scripts\": [");
+                for (int i = 0; i < allScripts.Count; i++)
+                {
+                    json.Append($"{indent}    \"{EscapeJsonString(allScripts[i])}\"");
+                    if (i < allScripts.Count - 1) json.AppendLine(",");
+                    else json.AppendLine();
+                }
+                json.Append($"{indent}  ]");
+            }
+            else
+            {
+                json.AppendLine(); // Close the previous line
+            }
+            
+            json.Append($"{indent}}}");
+            
+            // Process children
+            for (int i = 0; i < gameObject.transform.childCount; i++)
+            {
+                Transform child = gameObject.transform.GetChild(i);
+                ExportGameObjectToJsonManually(child.gameObject, currentPath, json, ref isFirst, depth + 1);
+            }
+        }
+        
+        /// <summary>
+        /// Extracts UI text content from various UI components
+        /// </summary>
+        private static string ExtractUIText(GameObject gameObject)
+        {
+            // Check for TextMeshPro UI components
+            var tmpText = gameObject.GetComponent<TMPro.TextMeshProUGUI>();
+            if (tmpText != null && !string.IsNullOrEmpty(tmpText.text))
+            {
+                return tmpText.text;
+            }
+            
+            // Check for legacy Text components
+            var legacyText = gameObject.GetComponent<UnityEngine.UI.Text>();
+            if (legacyText != null && !string.IsNullOrEmpty(legacyText.text))
+            {
+                return legacyText.text;
+            }
+            
+            // Check for Button component (which might have text on a child)
+            var button = gameObject.GetComponent<UnityEngine.UI.Button>();
+            if (button != null)
+            {
+                // Look for text in children
+                var childText = gameObject.GetComponentInChildren<TMPro.TextMeshProUGUI>();
+                if (childText != null && !string.IsNullOrEmpty(childText.text))
+                {
+                    return childText.text;
+                }
+                
+                var childLegacyText = gameObject.GetComponentInChildren<UnityEngine.UI.Text>();
+                if (childLegacyText != null && !string.IsNullOrEmpty(childLegacyText.text))
+                {
+                    return childLegacyText.text;
+                }
+            }
+            
+            // Check for InputField
+            var inputField = gameObject.GetComponent<TMPro.TMP_InputField>();
+            if (inputField != null && !string.IsNullOrEmpty(inputField.text))
+            {
+                return inputField.text;
+            }
+            
+            var legacyInputField = gameObject.GetComponent<UnityEngine.UI.InputField>();
+            if (legacyInputField != null && !string.IsNullOrEmpty(legacyInputField.text))
+            {
+                return legacyInputField.text;
+            }
+            
+            return null; // No text content found
+        }
+        
+        
+        /// <summary>
+        /// Escapes strings for JSON
+        /// </summary>
+        private static string EscapeJsonString(string str)
+        {
+            if (string.IsNullOrEmpty(str)) return str;
+            
+            return str.Replace("\\", "\\\\")
+                     .Replace("\"", "\\\"")
+                     .Replace("\n", "\\n")
+                     .Replace("\r", "\\r")
+                     .Replace("\t", "\\t");
+        }
+        
+        /// <summary>
+        /// DEPRECATED: Old Unity JsonUtility approach
         /// </summary>
         private static SceneState ExportSceneToState(Scene scene)
         {
+            // Use ultra-minimal structure and convert it to SceneState for compatibility
+            var minimalState = ExportSceneToMinimalState(scene);
+            
+            // Convert back to SceneState format but with minimal data
             var sceneState = new SceneState();
             sceneState.exportTime = DateTime.Now;
             
-            // Export metadata
-            sceneState.metadata = ExportSceneMetadata(scene);
+            sceneState.metadata = new SceneMetadata
+            {
+                sceneName = minimalState.sceneName,
+                scenePath = scene.path,
+                exportTimestamp = minimalState.exportTimestamp,
+                exportedBy = "VibeUnity-Minimal"
+            };
             
-            // Export scene settings
-            sceneState.settings = ExportSceneSettings();
-            
-            // Export all GameObjects
+            // Convert minimal GameObjects to full GameObjectInfo structure (but with minimal data)
             var gameObjectsList = new List<GameObjectInfo>();
-            var assetReferences = new HashSet<string>();
-            var coverageData = new CoverageAnalysisData();
+            foreach (var minimalObj in minimalState.gameObjects)
+            {
+                var gameObjectInfo = new GameObjectInfo
+                {
+                    name = minimalObj.name,
+                    hierarchyPath = minimalObj.hierarchyPath,
+                    isActive = minimalObj.isActive,
+                    parentPath = minimalObj.parentPath,
+                    childrenPaths = new string[0],
+                    siblingIndex = 0,
+                    transform = null,
+                    uiInfo = null,
+                    components = ConvertCustomScriptsToComponents(minimalObj.customScripts)
+                };
+                gameObjectsList.Add(gameObjectInfo);
+            }
+            
+            sceneState.gameObjects = gameObjectsList.ToArray();
+            sceneState.settings = null;
+            sceneState.assetReferences = new string[0];
+            sceneState.coverageReport = null;
+            
+            return sceneState;
+        }
+        
+        /// <summary>
+        /// Exports scene to ultra-minimal structure
+        /// </summary>
+        private static MinimalSceneState ExportSceneToMinimalState(Scene scene)
+        {
+            var minimalState = new MinimalSceneState
+            {
+                sceneName = scene.name,
+                exportTimestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
+            };
+            
+            var gameObjectsList = new List<MinimalGameObject>();
             
             GameObject[] rootObjects = scene.GetRootGameObjects();
             foreach (GameObject rootObj in rootObjects)
             {
-                ExportGameObjectRecursive(rootObj, "", gameObjectsList, assetReferences, coverageData);
+                ExportGameObjectUltraMinimal(rootObj, "", gameObjectsList);
             }
             
-            sceneState.gameObjects = gameObjectsList.ToArray();
-            sceneState.assetReferences = assetReferences.ToArray();
-            
-            // Generate coverage report
-            sceneState.coverageReport = GenerateCoverageReport(coverageData, gameObjectsList.Count);
-            
-            return sceneState;
+            minimalState.gameObjects = gameObjectsList.ToArray();
+            return minimalState;
+        }
+        
+        /// <summary>
+        /// Converts custom script names to ComponentInfo array
+        /// </summary>
+        private static ComponentInfo[] ConvertCustomScriptsToComponents(string[] customScripts)
+        {
+            if (customScripts == null || customScripts.Length == 0)
+                return new ComponentInfo[0];
+                
+            var components = new ComponentInfo[customScripts.Length];
+            for (int i = 0; i < customScripts.Length; i++)
+            {
+                components[i] = new ComponentInfo
+                {
+                    typeName = customScripts[i],
+                    fullTypeName = customScripts[i],
+                    enabled = true,
+                    properties = new ComponentProperty[0],
+                    isSupported = false,
+                    missingFeatures = new string[0]
+                };
+            }
+            return components;
         }
         
         /// <summary>
@@ -227,7 +455,100 @@ namespace VibeUnity.Editor
         }
         
         /// <summary>
-        /// Recursively exports a GameObject and its children
+        /// Recursively exports a GameObject with ultra-minimal data
+        /// </summary>
+        private static void ExportGameObjectUltraMinimal(GameObject gameObject, string parentPath, List<MinimalGameObject> gameObjectsList)
+        {
+            string currentPath = string.IsNullOrEmpty(parentPath) ? gameObject.name : $"{parentPath}/{gameObject.name}";
+            
+            // Get only custom script components
+            Component[] components = gameObject.GetComponents<Component>();
+            var customScripts = new List<string>();
+            
+            foreach (Component component in components)
+            {
+                if (component != null && IsCustomScript(component))
+                {
+                    customScripts.Add(component.GetType().Name);
+                }
+            }
+            
+            var minimalGameObject = new MinimalGameObject
+            {
+                name = gameObject.name,
+                hierarchyPath = currentPath,
+                isActive = gameObject.activeInHierarchy,
+                parentPath = parentPath,
+                customScripts = customScripts.ToArray()
+            };
+            
+            gameObjectsList.Add(minimalGameObject);
+            
+            // Recursively export children
+            for (int i = 0; i < gameObject.transform.childCount; i++)
+            {
+                Transform child = gameObject.transform.GetChild(i);
+                ExportGameObjectUltraMinimal(child.gameObject, currentPath, gameObjectsList);
+            }
+        }
+        
+        /// <summary>
+        /// DEPRECATED: Old minimal export method
+        /// </summary>
+        private static void ExportGameObjectMinimal(GameObject gameObject, string parentPath, List<GameObjectInfo> gameObjectsList)
+        {
+            string currentPath = string.IsNullOrEmpty(parentPath) ? gameObject.name : $"{parentPath}/{gameObject.name}";
+            
+            var gameObjectInfo = new GameObjectInfo
+            {
+                name = gameObject.name,
+                hierarchyPath = currentPath,
+                isActive = gameObject.activeInHierarchy,
+                parentPath = parentPath,
+                childrenPaths = new string[0], // Skip child paths for even more minimal
+                components = new ComponentInfo[0], // Start with empty
+                transform = null, // No transform data
+                uiInfo = null // No UI data
+            };
+            
+            // ONLY export custom script components - nothing else
+            Component[] components = gameObject.GetComponents<Component>();
+            var scriptComponents = new List<ComponentInfo>();
+            
+            foreach (Component component in components)
+            {
+                if (component != null && IsCustomScript(component))
+                {
+                    scriptComponents.Add(new ComponentInfo
+                    {
+                        typeName = component.GetType().Name,
+                        fullTypeName = component.GetType().FullName,
+                        enabled = GetComponentEnabledState(component),
+                        properties = new ComponentProperty[0], // No properties - just presence
+                        isSupported = false,
+                        missingFeatures = new string[0]
+                    });
+                }
+            }
+            
+            // Only set components if we have custom scripts
+            if (scriptComponents.Count > 0)
+            {
+                gameObjectInfo.components = scriptComponents.ToArray();
+            }
+            
+            gameObjectsList.Add(gameObjectInfo);
+            
+            // Recursively export children
+            for (int i = 0; i < gameObject.transform.childCount; i++)
+            {
+                Transform child = gameObject.transform.GetChild(i);
+                ExportGameObjectMinimal(child.gameObject, currentPath, gameObjectsList);
+            }
+        }
+        
+        /// <summary>
+        /// DEPRECATED: Old recursive export method - keeping for reference
         /// </summary>
         private static void ExportGameObjectRecursive(GameObject gameObject, string parentPath, 
             List<GameObjectInfo> gameObjectsList, HashSet<string> assetReferences, CoverageAnalysisData coverageData)
@@ -314,7 +635,7 @@ namespace VibeUnity.Editor
         }
         
         /// <summary>
-        /// Exports a component with coverage analysis
+        /// Exports a component with coverage analysis (minimalist approach - only scripts)
         /// </summary>
         private static ComponentInfo ExportComponent(Component component, HashSet<string> assetReferences, CoverageAnalysisData coverageData)
         {
@@ -338,20 +659,34 @@ namespace VibeUnity.Editor
             // Track coverage
             coverageData.TrackComponent(typeName, isSupported, isPartiallySupported);
             
-            // Export component properties
+            // MINIMALIST APPROACH: Only export properties for script components (MonoBehaviour derivatives)
             var properties = new List<ComponentProperty>();
             var missingFeatures = new List<string>();
             
-            ExportComponentProperties(component, properties, assetReferences, missingFeatures);
+            bool isCustomScript = IsCustomScript(component);
+            if (isCustomScript)
+            {
+                // Only export detailed properties for custom scripts/MonoBehaviours
+                ExportComponentProperties(component, properties, assetReferences, missingFeatures);
+            }
+            else 
+            {
+                // For built-in Unity components, only record basic positioning if it's Transform/RectTransform
+                if (component is Transform || component is RectTransform)
+                {
+                    ExportComponentProperties(component, properties, assetReferences, missingFeatures);
+                }
+                // For all other Unity built-in components, skip detailed property export
+            }
             
             componentInfo.properties = properties.ToArray();
             componentInfo.missingFeatures = missingFeatures.ToArray();
             
             // Log gaps for unsupported components
-            if (!isSupported && !isPartiallySupported)
+            if (!isSupported && !isPartiallySupported && isCustomScript)
             {
                 coverageData.AddGap("Component", "Warning", typeName,
-                    $"Component type '{typeName}' is not supported for scene rebuilding",
+                    $"Custom script '{typeName}' is not supported for scene rebuilding",
                     1, new[] { GetGameObjectPath(component.gameObject) },
                     $"Add support for {typeName} component in VibeUnity package");
             }
@@ -367,6 +702,37 @@ namespace VibeUnity.Editor
             }
             
             return componentInfo;
+        }
+        
+        /// <summary>
+        /// Determines if a component is a custom script (MonoBehaviour derivative)
+        /// </summary>
+        private static bool IsCustomScript(Component component)
+        {
+            if (component == null) return false;
+            
+            Type componentType = component.GetType();
+            
+            // Check if it's a MonoBehaviour derivative
+            if (!typeof(MonoBehaviour).IsAssignableFrom(componentType))
+                return false;
+            
+            // Exclude Unity's built-in UI components that derive from MonoBehaviour
+            string namespaceName = componentType.Namespace ?? "";
+            string typeName = componentType.Name;
+            
+            // Skip Unity built-in components
+            if (namespaceName.StartsWith("UnityEngine") || 
+                namespaceName.StartsWith("UnityEditor") ||
+                namespaceName.StartsWith("TMPro"))
+                return false;
+                
+            // Skip known Unity UI components
+            if (typeName == "Button" || typeName == "Toggle" || typeName == "Slider" ||
+                typeName == "ScrollRect" || typeName == "Dropdown" || typeName == "InputField")
+                return false;
+            
+            return true; // This is a custom script
         }
         
         /// <summary>

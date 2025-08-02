@@ -17,6 +17,7 @@ namespace VibeUnity.Editor
         public static bool ProcessBatchFileWithLogging(string jsonFilePath)
         {
             var logCapture = new StringBuilder();
+            bool overallSuccess = false;
             
             try
             {
@@ -126,6 +127,7 @@ namespace VibeUnity.Editor
                     logCapture.AppendLine("   └─ Batch processing completed successfully despite export issue");
                 }
                 
+                overallSuccess = true;
                 return true;
             }
             catch (System.Exception e)
@@ -134,12 +136,13 @@ namespace VibeUnity.Editor
                 logCapture.AppendLine($"❌ FATAL ERROR: {error}");
                 logCapture.AppendLine($"Stack Trace: {e.StackTrace}");
                 Debug.LogError($"[VibeUnity] {error}");
+                overallSuccess = false;
                 return false;
             }
             finally
             {
                 // Save the log file
-                SaveLogFile(jsonFilePath, logCapture);
+                SaveLogFile(jsonFilePath, logCapture, overallSuccess);
             }
         }
         
@@ -274,6 +277,8 @@ namespace VibeUnity.Editor
                     return ExecuteAddCapsuleCommandWithLogging(command, logCapture);
                 case "add-component":
                     return ExecuteAddComponentCommandWithLogging(command, logCapture);
+                case "add-gameobject":
+                    return ExecuteAddGameObjectCommandWithLogging(command, logCapture);
                 default:
                     logCapture.AppendLine($"❌ ERROR: Unknown batch command: {command.action}");
                     return false;
@@ -286,7 +291,8 @@ namespace VibeUnity.Editor
         {
             try
             {
-                string sceneName = command.name;
+                // Support both "sceneName" and "name" fields for backwards compatibility
+                string sceneName = !string.IsNullOrEmpty(command.sceneName) ? command.sceneName : command.name;
                 string scenePath = !string.IsNullOrEmpty(command.path) ? command.path : "Assets/Scenes";
                 string sceneType = !string.IsNullOrEmpty(command.type) ? command.type : "DefaultGameObjects";
                 bool addToBuild = command.addToBuild;
@@ -697,12 +703,81 @@ namespace VibeUnity.Editor
             }
         }
         
+        private static bool ExecuteAddGameObjectCommandWithLogging(BatchCommand command, StringBuilder logCapture)
+        {
+            try
+            {
+                string objectName = command.name;
+                string parentName = command.parent;
+                
+                logCapture.AppendLine($"Executing add-gameobject command...");
+                logCapture.AppendLine($"GameObject Name: {objectName}");
+                logCapture.AppendLine($"Parent: {(!string.IsNullOrEmpty(parentName) ? parentName : "Scene Root")}");
+                
+                GameObject parentObject = null;
+                if (!string.IsNullOrEmpty(parentName))
+                {
+                    parentObject = VibeUnityGameObjects.FindInActiveScene(parentName);
+                    if (parentObject == null)
+                    {
+                        logCapture.AppendLine($"❌ Parent GameObject '{parentName}' not found in active scene");
+                        return false;
+                    }
+                }
+                
+                GameObject gameObject = VibeUnityGameObjects.CreateEmptyGameObject(objectName, parentObject);
+                if (gameObject == null)
+                {
+                    logCapture.AppendLine($"❌ Failed to create GameObject '{objectName}'");
+                    return false;
+                }
+                
+                // Set position if provided
+                if (command.position != null && command.position.Length >= 3)
+                {
+                    Vector3 position = new Vector3(command.position[0], command.position[1], command.position[2]);
+                    gameObject.transform.position = position;
+                    logCapture.AppendLine($"   └─ Position set to: ({position.x}, {position.y}, {position.z})");
+                }
+                
+                // Set rotation if provided
+                if (command.rotation != null && command.rotation.Length >= 3)
+                {
+                    Vector3 rotation = new Vector3(command.rotation[0], command.rotation[1], command.rotation[2]);
+                    gameObject.transform.eulerAngles = rotation;
+                    logCapture.AppendLine($"   └─ Rotation set to: ({rotation.x}, {rotation.y}, {rotation.z})");
+                }
+                
+                // Set scale if provided
+                if (command.scale != null && command.scale.Length >= 3)
+                {
+                    Vector3 scale = new Vector3(command.scale[0], command.scale[1], command.scale[2]);
+                    gameObject.transform.localScale = scale;
+                    logCapture.AppendLine($"   └─ Scale set to: ({scale.x}, {scale.y}, {scale.z})");
+                }
+                
+                logCapture.AppendLine($"✅ GameObject '{objectName}' created successfully");
+                if (parentObject != null)
+                {
+                    logCapture.AppendLine($"   └─ Parented to: {parentName}");
+                }
+                
+                return true;
+            }
+            catch (System.Exception e)
+            {
+                logCapture.AppendLine($"❌ Exception in add-gameobject: {e.Message}");
+                logCapture.AppendLine($"Stack Trace: {e.StackTrace}");
+                return false;
+            }
+        }
+        
         #endregion
         
         /// <summary>
         /// Saves a log file for the batch processing
         /// </summary>
-        private static void SaveLogFile(string jsonFilePath, StringBuilder logCapture)
+        private static void SaveLogFile(string jsonFilePath, StringBuilder logCapture, bool success)
         {
             try
             {
@@ -720,7 +795,7 @@ namespace VibeUnity.Editor
                 // Save the log file
                 logCapture.AppendLine();
                 logCapture.AppendLine($"=== Processing Complete ===");
-                logCapture.AppendLine($"Result: SUCCESS");
+                logCapture.AppendLine($"Result: {(success ? "SUCCESS" : "FAILURE")}");
                 logCapture.AppendLine($"End Time: {System.DateTime.Now:yyyy-MM-dd HH:mm:ss}");
                 
                 File.WriteAllText(logFilePath, logCapture.ToString());
@@ -770,6 +845,7 @@ namespace VibeUnity.Editor
         public string name;
         
         // Scene creation fields
+        public string sceneName;  // Alternative field name for scene creation
         public string path;
         public string type;
         public bool addToBuild;
@@ -805,7 +881,7 @@ namespace VibeUnity.Editor
         
         // Component specific
         public string componentType;
-        public ComponentParameter[] parameters;
+        public VibeUnityGameObjects.ComponentParameter[] parameters;
     }
     
     #endregion

@@ -13,13 +13,40 @@ namespace VibeUnity.Editor
     {
         public string version = "1.0";
         public SceneMetadata metadata;
-        public SceneSettings settings;
         public GameObjectInfo[] gameObjects;
+        
+        // Optional fields (can be null for minimal exports)
+        public SceneSettings settings;
         public string[] assetReferences;
         public CoverageReport coverageReport;
         
         [NonSerialized]
         public DateTime exportTime;
+    }
+    
+    /// <summary>
+    /// Ultra-minimal scene state for size-conscious exports
+    /// </summary>
+    [Serializable]
+    public class MinimalSceneState
+    {
+        public string version = "1.0";
+        public string sceneName;
+        public string exportTimestamp;
+        public MinimalGameObject[] gameObjects;
+    }
+    
+    /// <summary>
+    /// Minimal GameObject representation
+    /// </summary>
+    [Serializable]
+    public class MinimalGameObject
+    {
+        public string name;
+        public string hierarchyPath;
+        public bool isActive;
+        public string parentPath;
+        public string[] customScripts; // Only custom script component names
     }
     
     /// <summary>

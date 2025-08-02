@@ -159,6 +159,13 @@ namespace VibeUnity.Editor
         /// </summary>
         public static string FindSceneAsset(string sceneName)
         {
+            // Validate input
+            if (string.IsNullOrEmpty(sceneName))
+            {
+                Debug.LogError("FindSceneAsset: sceneName is null or empty");
+                return null;
+            }
+            
             // Clean up scene name
             if (sceneName.EndsWith(".unity"))
             {

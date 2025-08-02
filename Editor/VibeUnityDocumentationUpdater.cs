@@ -13,8 +13,8 @@ namespace VibeUnity.Editor
     /// </summary>
     public static class VibeUnityDocumentationUpdater
     {
-        private const string SECTION_START_MARKER = "# Vibe Unity Integration Guide";
-        private const string SECTION_END_MARKER = "*This section is automatically maintained by Vibe Unity";
+        private const string SECTION_START_MARKER = "⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄VIBE-UNITY⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄";
+        private const string SECTION_END_MARKER = "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^VIBE-UNITY^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^";
         private const string VERSION_PATTERN = @"v(\d+\.\d+\.\d+)";
         
         /// <summary>
@@ -138,6 +138,8 @@ namespace VibeUnity.Editor
         {
             var sb = new StringBuilder();
             
+            sb.AppendLine("⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄VIBE-UNITY⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄");
+            sb.AppendLine();
             sb.AppendLine($"# Vibe Unity Integration Guide (Auto-generated - v{version})");
             sb.AppendLine();
             sb.AppendLine("## Quick Reference for Claude-Code");
@@ -164,6 +166,13 @@ namespace VibeUnity.Editor
             sb.AppendLine("- **Test file**: `.vibe-commands/test-scene-creation.json`");
             sb.AppendLine("- **Supported actions**: create-scene, add-canvas, add-button, add-text, add-scrollview, add-cube, etc.");
             sb.AppendLine();
+            sb.AppendLine("### CRITICAL: Scene Creation Verification for Claude-Code");
+            sb.AppendLine("- **ALWAYS check log files** after creating a scene to verify success");
+            sb.AppendLine("- **Log location**: `.vibe-commands/logs/` directory");
+            sb.AppendLine("- **If scene creation fails**: STOP immediately and report the issue");
+            sb.AppendLine("- **Look for**: \"Scene created successfully\" or error messages in logs");
+            sb.AppendLine("- **Common issues**: Missing components, unsupported features, JSON syntax errors");
+            sb.AppendLine();
             sb.AppendLine($"### Current Component Support (v{version})");
             sb.AppendLine("- ✅ **UI**: Canvas, Button, Text, Image, ScrollView, TextMeshPro");
             sb.AppendLine("- ✅ **3D**: Cube, Sphere, Plane, Cylinder, Capsule, Camera, Light");
@@ -184,13 +193,19 @@ namespace VibeUnity.Editor
             sb.AppendLine("- **Manual Testing**: ✅ ACTIVE (Use Unity menu items)");
             sb.AppendLine("- **Claude Compile Check**: ✅ INSTALLED (automatic deployment)");
             sb.AppendLine();
+            sb.AppendLine("## Vibe-Unity Claude Instructions");
+            sb.AppendLine("* Whenever you create or modify a script, use the vibe-unity .sh tools to compile.");
+            sb.AppendLine("* Whenever you have Unity compile, check the compilation logs for errors and warnings. Errors need to be fixed by you, and warnings should be mentioned during summarization after work is completed.");
+            sb.AppendLine("* Whenever you use vibe-unity to create or modify a scene, verify it was created properly by referring to the logs. Any parts of a scene that could not be created with Vibe-Unity should be mentioned during summarization after work is completed.");
+            sb.AppendLine("* Do NOT write to or create .meta files unless explicitly told to.");
+            sb.AppendLine("* Whenever you are tasked with something that will have you creating scenes using Vibe-Unity, immediately ask if you should \"pause and ask to continue\", stop what you are doing, or continue when you encounter issues creating those scenes.");
+            sb.AppendLine();
             sb.AppendLine("## For Detailed Usage");
             sb.AppendLine("- **Full Documentation**: [Package README](./Packages/com.ricoder.vibe-unity/README.md)");
             sb.AppendLine("- **JSON Schema Examples**: [Package Test Files](./Packages/com.ricoder.vibe-unity/.vibe-commands/)");
             sb.AppendLine("- **Coverage Analysis**: Check latest report in `.vibe-commands/coverage-analysis/`");
             sb.AppendLine();
-            sb.AppendLine("---");
-            sb.AppendLine($"*This section is automatically maintained by Vibe Unity v{version}*");
+            sb.AppendLine("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^VIBE-UNITY^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^");
             
             return sb.ToString();
         }

@@ -17,7 +17,7 @@ namespace VibeUnity.Editor
         {
             Scene activeScene = SceneManager.GetActiveScene();
             GameObject[] rootObjects = activeScene.GetRootGameObjects();
-            
+
             foreach (GameObject rootObj in rootObjects)
             {
                 GameObject found = FindRecursive(rootObj, name);
@@ -26,10 +26,10 @@ namespace VibeUnity.Editor
                     return found;
                 }
             }
-            
+
             return null;
         }
-        
+
         /// <summary>
         /// Recursively searches for a GameObject by name
         /// </summary>
@@ -39,7 +39,7 @@ namespace VibeUnity.Editor
             {
                 return parent;
             }
-            
+
             foreach (Transform child in parent.transform)
             {
                 GameObject found = FindRecursive(child.gameObject, targetName);
@@ -48,10 +48,10 @@ namespace VibeUnity.Editor
                     return found;
                 }
             }
-            
+
             return null;
         }
-        
+
         /// <summary>
         /// Gets the full hierarchy path of a GameObject
         /// </summary>
@@ -59,19 +59,19 @@ namespace VibeUnity.Editor
         {
             if (gameObject == null)
                 return "null";
-                
+
             string path = gameObject.name;
             Transform parent = gameObject.transform.parent;
-            
+
             while (parent != null)
             {
                 path = parent.name + "/" + path;
                 parent = parent.parent;
             }
-            
+
             return path;
         }
-        
+
         /// <summary>
         /// Lists all available GameObjects in the active scene
         /// </summary>
@@ -80,18 +80,18 @@ namespace VibeUnity.Editor
             Scene activeScene = SceneManager.GetActiveScene();
             if (!activeScene.IsValid())
                 return "No active scene";
-                
+
             var names = new List<string>();
             GameObject[] rootObjects = activeScene.GetRootGameObjects();
-            
+
             foreach (GameObject rootObj in rootObjects)
             {
                 CollectNames(rootObj, names, "");
             }
-            
+
             return names.Count > 0 ? string.Join(", ", names) : "No GameObjects found";
         }
-        
+
         /// <summary>
         /// Collects all GameObject names recursively
         /// </summary>
@@ -99,13 +99,13 @@ namespace VibeUnity.Editor
         {
             string currentPath = string.IsNullOrEmpty(prefix) ? parent.name : prefix + "/" + parent.name;
             names.Add(currentPath);
-            
+
             foreach (Transform child in parent.transform)
             {
                 CollectNames(child.gameObject, names, currentPath);
             }
         }
-        
+
         /// <summary>
         /// Adds a component to a GameObject by type name
         /// </summary>
@@ -115,7 +115,7 @@ namespace VibeUnity.Editor
             {
                 // Handle common component type aliases
                 string normalizedTypeName = NormalizeComponentTypeName(componentTypeName);
-                
+
                 // Try to find the type by name
                 System.Type componentType = GetComponentTypeByName(normalizedTypeName);
                 if (componentType == null)
@@ -123,7 +123,7 @@ namespace VibeUnity.Editor
                     Debug.LogError($"[VibeUnity] Component type '{componentTypeName}' not found");
                     return null;
                 }
-                
+
                 // Add the component
                 Component component = target.AddComponent(componentType);
                 if (component != null)
@@ -143,7 +143,7 @@ namespace VibeUnity.Editor
                 return null;
             }
         }
-        
+
         /// <summary>
         /// Normalizes component type names to handle common aliases
         /// </summary>
@@ -152,7 +152,7 @@ namespace VibeUnity.Editor
             // Remove common suffixes
             if (typeName.EndsWith("Component"))
                 typeName = typeName.Substring(0, typeName.Length - 9);
-                
+
             // Handle common aliases
             switch (typeName.ToLower())
             {
@@ -174,7 +174,7 @@ namespace VibeUnity.Editor
                 default: return typeName;
             }
         }
-        
+
         /// <summary>
         /// Gets a component type by name, searching common Unity namespaces
         /// </summary>
@@ -183,31 +183,31 @@ namespace VibeUnity.Editor
             // Try direct type lookup
             System.Type type = System.Type.GetType(typeName);
             if (type != null) return type;
-            
+
             // Try with UnityEngine namespace
             type = System.Type.GetType($"UnityEngine.{typeName}, UnityEngine");
             if (type != null) return type;
-            
+
             // Try with UnityEngine.UI namespace
             type = System.Type.GetType($"UnityEngine.UI.{typeName}, UnityEngine.UI");
             if (type != null) return type;
-            
+
             // Search through all loaded assemblies
             foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
             {
                 type = assembly.GetType(typeName);
                 if (type != null && type.IsSubclassOf(typeof(Component)))
                     return type;
-                    
+
                 // Try with UnityEngine prefix
                 type = assembly.GetType($"UnityEngine.{typeName}");
                 if (type != null && type.IsSubclassOf(typeof(Component)))
                     return type;
             }
-            
+
             return null;
         }
-        
+
         /// <summary>
         /// Sets component parameters from a dictionary
         /// </summary>
@@ -215,9 +215,9 @@ namespace VibeUnity.Editor
         {
             if (component == null || parameters == null || parameters.Length == 0)
                 return true;
-                
+
             bool allSuccess = true;
-            
+
             foreach (var param in parameters)
             {
                 if (!SetComponentParameter(component, param, logCapture))
@@ -225,10 +225,10 @@ namespace VibeUnity.Editor
                     allSuccess = false;
                 }
             }
-            
+
             return allSuccess;
         }
-        
+
         /// <summary>
         /// Sets a single component parameter
         /// </summary>
@@ -238,7 +238,7 @@ namespace VibeUnity.Editor
             {
                 var type = component.GetType();
                 var property = type.GetProperty(param.name);
-                
+
                 if (property != null && property.CanWrite)
                 {
                     object value = ConvertParameterValue(param.value, param.type, property.PropertyType);
@@ -246,7 +246,7 @@ namespace VibeUnity.Editor
                     logCapture?.AppendLine($"   └─ Set {param.name} = {param.value}");
                     return true;
                 }
-                
+
                 var field = type.GetField(param.name);
                 if (field != null)
                 {
@@ -255,7 +255,7 @@ namespace VibeUnity.Editor
                     logCapture?.AppendLine($"   └─ Set {param.name} = {param.value}");
                     return true;
                 }
-                
+
                 logCapture?.AppendLine($"   └─ Warning: Parameter '{param.name}' not found on component");
                 return false;
             }
@@ -265,7 +265,7 @@ namespace VibeUnity.Editor
                 return false;
             }
         }
-        
+
         /// <summary>
         /// Converts a parameter value from string to the target type
         /// </summary>
@@ -278,7 +278,7 @@ namespace VibeUnity.Editor
                 {
                     return targetType.IsValueType ? System.Activator.CreateInstance(targetType) : null;
                 }
-                
+
                 // Handle common types
                 if (targetType == typeof(int))
                     return int.Parse(value);
@@ -290,7 +290,7 @@ namespace VibeUnity.Editor
                     return bool.Parse(value);
                 if (targetType == typeof(string))
                     return value;
-                    
+
                 // Handle Unity types
                 if (targetType == typeof(Vector3))
                 {
@@ -304,7 +304,7 @@ namespace VibeUnity.Editor
                         );
                     }
                 }
-                
+
                 if (targetType == typeof(Vector2))
                 {
                     string[] parts = value.Split(',');
@@ -316,13 +316,13 @@ namespace VibeUnity.Editor
                         );
                     }
                 }
-                
+
                 if (targetType == typeof(Color))
                 {
                     Color color;
                     if (ColorUtility.TryParseHtmlString(value, out color))
                         return color;
-                        
+
                     string[] parts = value.Split(',');
                     if (parts.Length >= 3)
                     {
@@ -334,7 +334,7 @@ namespace VibeUnity.Editor
                         );
                     }
                 }
-                
+
                 // Try generic conversion
                 return System.Convert.ChangeType(value, targetType);
             }
@@ -344,16 +344,47 @@ namespace VibeUnity.Editor
                 return targetType.IsValueType ? System.Activator.CreateInstance(targetType) : null;
             }
         }
-    }
-    
-    /// <summary>
-    /// Represents a component parameter for setting values
-    /// </summary>
-    [System.Serializable]
-    public class ComponentParameter
-    {
-        public string name;
-        public string value;
-        public string type;
+
+
+        /// <summary>
+        /// Creates an empty GameObject with optional parent
+        /// </summary>
+        public static GameObject CreateEmptyGameObject(string name, GameObject parent = null)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(name))
+                {
+                    Debug.LogError("[VibeUnity] GameObject name cannot be null or empty");
+                    return null;
+                }
+
+                GameObject emptyObject = new GameObject(name);
+
+                if (parent != null)
+                {
+                    emptyObject.transform.SetParent(parent.transform);
+                }
+
+                Debug.Log($"[VibeUnity] Successfully created empty GameObject '{name}'{(parent != null ? $" under '{parent.name}'" : " at scene root")}");
+                return emptyObject;
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"[VibeUnity] Exception creating empty GameObject: {e.Message}");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Represents a component parameter for setting values
+        /// </summary>
+        [System.Serializable]
+        public class ComponentParameter
+        {
+            public string name;
+            public string value;
+            public string type;
+        }
     }
 }

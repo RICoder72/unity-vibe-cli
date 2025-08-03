@@ -15,7 +15,7 @@
 
 UNITY_LOG_PATH="/mnt/c/Users/matth/AppData/Local/Unity/Editor/Editor.log"
 INCLUDE_WARNINGS=false
-SCRIPT_VERSION="1.3.1"
+SCRIPT_VERSION="1.4.2"
 PROJECT_NAME=""
 RETRY_COUNT=0
 MAX_RETRIES=2

@@ -662,7 +662,7 @@ namespace VibeUnity.Editor
             try
             {
                 string projectRoot = Path.GetDirectoryName(Application.dataPath);
-                string importDir = Path.Combine(projectRoot, ".vibe-commands", "import-logs");
+                string importDir = Path.Combine(projectRoot, ".vibe-unity", "commands", "import-logs");
                 if (!Directory.Exists(importDir))
                 {
                     Directory.CreateDirectory(importDir);

@@ -18,7 +18,7 @@ namespace VibeUnity.Editor
         /// <summary>
         /// Directory where CLI drops command files for Unity to pick up
         /// </summary>
-        private static readonly string COMMAND_QUEUE_DIR = Path.Combine(Application.dataPath, "..", ".vibe-commands");
+        private static readonly string COMMAND_QUEUE_DIR = Path.Combine(Application.dataPath, "..", ".vibe-unity", "commands");
         private static FileSystemWatcher fileWatcher;
         private static readonly object lockObject = new object();
         
@@ -263,7 +263,7 @@ namespace VibeUnity.Editor
             Debug.Log("[VibeUnity]   Example: AddCanvas(\"UICanvas\", null, \"ScreenSpaceOverlay\", 1920, 1080, \"ScaleWithScreenSize\")");
             Debug.Log("[VibeUnity] ");
             Debug.Log("[VibeUnity] JSON BATCH FILES:");
-            Debug.Log("[VibeUnity]   Drop JSON files in .vibe-commands/ directory for automatic processing");
+            Debug.Log("[VibeUnity]   Drop JSON files in .vibe-unity/commands/ directory for automatic processing");
             Debug.Log("[VibeUnity] ");
             Debug.Log("[VibeUnity] Available Scene Types: " + string.Join(", ", VibeUnityScenes.GetAvailableSceneTypes()));
             Debug.Log("[VibeUnity] Available Render Modes: ScreenSpaceOverlay, ScreenSpaceCamera, WorldSpace");
@@ -433,6 +433,10 @@ namespace VibeUnity.Editor
             {
                 Directory.CreateDirectory(COMPILATION_STATUS_DIR);
                 Debug.Log($"[VibeUnity] Created compilation status directory: {COMPILATION_STATUS_DIR}");
+                
+                // Add .vibe-unity directory to .gitignore since it contains runtime files
+                string projectRoot = Directory.GetParent(Application.dataPath).FullName;
+                VibeUnitySetup.AddToGitIgnore(projectRoot, ".vibe-unity/");
             }
             
             // Hook into Unity's update to monitor EditorApplication.isCompiling
@@ -613,6 +617,27 @@ namespace VibeUnity.Editor
         #region Claude Compile Check Script Setup
         
         /// <summary>
+        /// Extracts version from claude-compile-check.sh script content
+        /// </summary>
+        private static string ExtractScriptVersion(string scriptContent)
+        {
+            try
+            {
+                // Look for SCRIPT_VERSION="x.x.x" pattern
+                var match = System.Text.RegularExpressions.Regex.Match(scriptContent, @"SCRIPT_VERSION=""([0-9]+\.[0-9]+\.[0-9]+)""");
+                if (match.Success)
+                {
+                    return match.Groups[1].Value;
+                }
+            }
+            catch
+            {
+                // Ignore extraction errors
+            }
+            return null;
+        }
+        
+        /// <summary>
         /// Sets up the claude-compile-check.sh script symlink for claude-code integration
         /// </summary>
         private static void SetupClaudeCompileCheckScript()
@@ -639,16 +664,26 @@ namespace VibeUnity.Editor
                         var existingContent = File.ReadAllText(projectScriptPath);
                         var packageContent = File.ReadAllText(packageScriptPath);
                         
-                        if (existingContent == packageContent)
+                        // Normalize line endings for comparison
+                        string normalizedPackageContent = packageContent.Replace("\r\n", "\n").Replace("\r", "\n");
+                        string normalizedExistingContent = existingContent.Replace("\r\n", "\n").Replace("\r", "\n");
+                        
+                        // Extract version from scripts for smarter update detection
+                        string packageVersion = ExtractScriptVersion(normalizedPackageContent);
+                        string existingVersion = ExtractScriptVersion(normalizedExistingContent);
+                        
+                        if (normalizedExistingContent == normalizedPackageContent || 
+                            (!string.IsNullOrEmpty(packageVersion) && packageVersion == existingVersion))
                         {
                             // Script is up to date
                             return;
                         }
                         else
                         {
-                            // Update the script
-                            File.Copy(packageScriptPath, projectScriptPath, true);
-                            Debug.Log("[VibeUnity] Updated claude-compile-check.sh script in project root");
+                            // Update the script with Unix line endings preserved
+                            File.WriteAllText(projectScriptPath, normalizedPackageContent);
+                            string versionInfo = !string.IsNullOrEmpty(packageVersion) ? $" (v{existingVersion} → v{packageVersion})" : "";
+                            Debug.Log($"[VibeUnity] Updated claude-compile-check.sh script in project root{versionInfo} (LF line endings preserved)");
                         }
                     }
                     catch (Exception e)
@@ -659,10 +694,13 @@ namespace VibeUnity.Editor
                 }
                 else
                 {
-                    // Copy script to project root
+                    // Copy script to project root with Unix line endings
                     try
                     {
-                        File.Copy(packageScriptPath, projectScriptPath);
+                        string packageContent = File.ReadAllText(packageScriptPath);
+                        // Ensure Unix line endings (LF only)
+                        string normalizedContent = packageContent.Replace("\r\n", "\n").Replace("\r", "\n");
+                        File.WriteAllText(projectScriptPath, normalizedContent);
                         
                         // Make it executable if on Unix-like system
                         if (Environment.OSVersion.Platform == PlatformID.Unix || 

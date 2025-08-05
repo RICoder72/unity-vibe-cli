@@ -1,6 +1,6 @@
 {
     "name": "com.ricoder.vibe-unity",
-    "version": "1.5.0",
+    "version": "1.5.2",
     "displayName": "Vibe Unity",
     "description": "Unity development workflow automation with JSON-driven scene creation, comprehensive scene state management, and gap detection. Features scene export/import, coverage analysis, and claude-code integration.",
     "unity": "2022.3",

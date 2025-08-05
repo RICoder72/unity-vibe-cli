@@ -800,6 +800,23 @@ namespace VibeUnity.Editor
                 
                 File.WriteAllText(logFilePath, logCapture.ToString());
                 Debug.Log($"[VibeUnity] Log saved to: {logFilePath}");
+                
+                // Also create latest.log in logs directory for easy access
+                try
+                {
+                    string parentDir = Path.GetDirectoryName(processedDir); // Get .vibe-unity/commands
+                    string logsDir = Path.Combine(parentDir, "logs");
+                    if (!Directory.Exists(logsDir))
+                    {
+                        Directory.CreateDirectory(logsDir);
+                    }
+                    string latestLogPath = Path.Combine(logsDir, "latest.log");
+                    File.WriteAllText(latestLogPath, logCapture.ToString());
+                }
+                catch (System.Exception logEx)
+                {
+                    Debug.LogWarning($"[VibeUnity] Failed to create latest.log: {logEx.Message}");
+                }
             }
             catch (System.Exception e)
             {

@@ -1095,7 +1095,7 @@ namespace VibeUnity.Editor
             {
                 // Create coverage analysis directory
                 string projectRoot = Path.GetDirectoryName(Application.dataPath);
-                string coverageDir = Path.Combine(projectRoot, ".vibe-commands", "coverage-analysis");
+                string coverageDir = Path.Combine(projectRoot, ".vibe-unity", "commands", "coverage-analysis");
                 if (!Directory.Exists(coverageDir))
                 {
                     Directory.CreateDirectory(coverageDir);

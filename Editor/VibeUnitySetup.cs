@@ -97,7 +97,7 @@ namespace VibeUnity.Editor
             }
         }
         
-        private static void AddToGitIgnore(string projectRoot, string fileName)
+        public static void AddToGitIgnore(string projectRoot, string fileName)
         {
             try
             {

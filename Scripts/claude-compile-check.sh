@@ -15,7 +15,7 @@
 
 UNITY_LOG_PATH="/mnt/c/Users/matth/AppData/Local/Unity/Editor/Editor.log"
 INCLUDE_WARNINGS=false
-SCRIPT_VERSION="1.5.0"
+SCRIPT_VERSION="1.5.2"
 PROJECT_NAME=""
 RETRY_COUNT=0
 MAX_RETRIES=2
@@ -243,6 +243,7 @@ monitor_compilation() {
     local initial_size=$(stat -c%s "$UNITY_LOG_PATH")
     local compilation_started=false
     local nothing_to_compile=false
+    local complete_checks=0
     
     while [[ $elapsed -lt $timeout ]]; do
         local current_size=$(stat -c%s "$UNITY_LOG_PATH")
@@ -255,8 +256,23 @@ monitor_compilation() {
             compilation_started=true
             echo "Unity compilation detected via status file - compilation in progress..." >&2
         elif [[ "$unity_status" == "COMPLETE" ]]; then
+            # If Unity is already complete and no compilation was started, 
+            # and no new log entries, then nothing to compile
+            if [[ "$compilation_started" == "false" ]] && [[ $current_size -eq $initial_size ]]; then
+                echo "Unity compilation is already complete, no new compilation detected" >&2
+                output_result "SUCCESS" "0" "0" "No compilation required - Unity is up to date"
+                return 0
+            fi
+            # Count consecutive "complete" status checks to prevent infinite loops
+            if [[ "$compilation_started" == "true" ]]; then
+                ((complete_checks++))
+                if [[ $complete_checks -ge 3 ]]; then
+                    echo "Unity shows complete status - treating as success" >&2
+                    output_result "SUCCESS" "0" "0" "Compilation completed successfully"
+                    return 0
+                fi
+            fi
             echo "Unity compilation completed via status file" >&2
-            # Let normal log processing handle the completion
         fi
         
         if [[ $current_size -gt $initial_size ]]; then

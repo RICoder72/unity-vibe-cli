@@ -20,6 +20,8 @@ namespace VibeUnity.Editor
         /// <summary>
         /// Initialize documentation updater on Unity startup
         /// </summary>
+        private const string VERSION_TRACKING_KEY = "VibeUnity_LastDocumentedVersion";
+        
         [InitializeOnLoadMethod]
         public static void InitializeDocumentationUpdater()
         {
@@ -28,7 +30,19 @@ namespace VibeUnity.Editor
             {
                 try
                 {
-                    UpdateClaudeMdDocumentation();
+                    // Check if package version has changed
+                    string currentVersion = GetPackageVersion();
+                    string lastDocumentedVersion = EditorPrefs.GetString(VERSION_TRACKING_KEY, "");
+                    
+                    if (currentVersion != lastDocumentedVersion)
+                    {
+                        if (UpdateClaudeMdDocumentation())
+                        {
+                            // Save the version we just documented
+                            EditorPrefs.SetString(VERSION_TRACKING_KEY, currentVersion);
+                            Debug.Log($"[VibeUnity] Updated CLAUDE.md documentation for version {currentVersion}");
+                        }
+                    }
                 }
                 catch (Exception e)
                 {
@@ -50,8 +64,18 @@ namespace VibeUnity.Editor
                 
                 if (!File.Exists(claudeMdPath))
                 {
-                    Debug.Log("[VibeUnity] CLAUDE.md not found - skipping documentation update");
-                    return false;
+                    Debug.Log("[VibeUnity] CLAUDE.md not found - creating new file");
+                    // Create a basic CLAUDE.md file with project instructions
+                    string initialContent = @"# Project Instructions
+
+This Unity project uses Vibe Unity for automated development workflows.
+
+## About Vibe Unity
+Vibe Unity enables claude-code integration for Unity scene creation and project automation.
+
+";
+                    File.WriteAllText(claudeMdPath, initialContent);
+                    Debug.Log($"[VibeUnity] Created new CLAUDE.md file at: {claudeMdPath}");
                 }
                 
                 // Get current package version
@@ -94,7 +118,7 @@ namespace VibeUnity.Editor
         /// <summary>
         /// Gets the current package version from package.json
         /// </summary>
-        private static string GetPackageVersion()
+        public static string GetPackageVersion()
         {
             try
             {
@@ -151,10 +175,10 @@ namespace VibeUnity.Editor
             sb.AppendLine("# Exit codes: 0=success, 1=errors, 2=timeout, 3=script error");
             sb.AppendLine("");
             sb.AppendLine("# 2. Create scenes via JSON (automatic processing)");
-            sb.AppendLine("echo '{\"action\":\"create-scene\",\"name\":\"TestScene\",\"path\":\"Assets/Scenes\"}' > .vibe-commands/test.json");
+            sb.AppendLine("echo '{\"action\":\"create-scene\",\"name\":\"TestScene\",\"path\":\"Assets/Scenes\"}' > .vibe-unity/commands/test.json");
             sb.AppendLine("");
             sb.AppendLine("# 3. Verify results (check logs after 3 seconds)");
-            sb.AppendLine("sleep 3 && cat .vibe-commands/logs/latest.log");
+            sb.AppendLine("sleep 3 && cat .vibe-unity/commands/logs/latest.log");
             sb.AppendLine("```");
             sb.AppendLine();
             sb.AppendLine("### Automated Success/Failure Detection");
@@ -164,10 +188,10 @@ namespace VibeUnity.Editor
             sb.AppendLine();
             sb.AppendLine("### File Locations for Claude-Code");
             sb.AppendLine("- **Compilation Check**: `./claude-compile-check.sh` (auto-installed)");
-            sb.AppendLine("- **JSON Commands**: Drop files in `.vibe-commands/` directory");
-            sb.AppendLine("- **Log Verification**: Check `.vibe-commands/logs/latest.log`");
-            sb.AppendLine("- **Coverage Reports**: `.vibe-commands/coverage-analysis/`");
-            sb.AppendLine("- **Test Template**: `.vibe-commands/test-scene-creation.json`");
+            sb.AppendLine("- **JSON Commands**: Drop files in `.vibe-unity/commands/` directory");
+            sb.AppendLine("- **Log Verification**: Check `.vibe-unity/commands/logs/latest.log`");
+            sb.AppendLine("- **Coverage Reports**: `.vibe-unity/commands/coverage-analysis/`");
+            sb.AppendLine("- **Test Template**: `.vibe-unity/commands/test-scene-creation.json`");
             sb.AppendLine();
             sb.AppendLine($"### Current Component Support (v{version})");
             sb.AppendLine("- ✅ **UI**: Canvas, Button, Text, Image, ScrollView, TextMeshPro");
@@ -180,11 +204,14 @@ namespace VibeUnity.Editor
             sb.AppendLine("// Basic scene creation");
             sb.AppendLine("{\"action\":\"create-scene\",\"name\":\"MyScene\",\"path\":\"Assets/Scenes\"}");
             sb.AppendLine("");
-            sb.AppendLine("// Scene with UI setup");
-            sb.AppendLine("{\"action\":\"create-scene\",\"name\":\"MenuScene\",\"path\":\"Assets/Scenes/UI\",\"components\":[");
-            sb.AppendLine("  {\"type\":\"canvas\",\"name\":\"MainCanvas\"},");
-            sb.AppendLine("  {\"type\":\"button\",\"name\":\"PlayButton\",\"parent\":\"MainCanvas\",\"text\":\"Play\"}");
-            sb.AppendLine("]}");
+            sb.AppendLine("// Multiple commands in batch file");
+            sb.AppendLine("{");
+            sb.AppendLine("  \"commands\": [");
+            sb.AppendLine("    {\"action\":\"create-scene\",\"name\":\"MenuScene\",\"path\":\"Assets/Scenes/UI\"},");
+            sb.AppendLine("    {\"action\":\"add-canvas\",\"name\":\"MainCanvas\"},");
+            sb.AppendLine("    {\"action\":\"add-button\",\"name\":\"PlayButton\",\"parent\":\"MainCanvas\",\"text\":\"Play\"}");
+            sb.AppendLine("  ]");
+            sb.AppendLine("}");
             sb.AppendLine("");
             sb.AppendLine("// Add 3D objects");
             sb.AppendLine("{\"action\":\"add-cube\",\"name\":\"TestCube\",\"position\":[0,1,0],\"scale\":[2,2,2]}");
@@ -214,15 +241,15 @@ namespace VibeUnity.Editor
             sb.AppendLine("## Automated Claude Instructions");
             sb.AppendLine("* **ALWAYS** run `./claude-compile-check.sh` after modifying C# scripts");
             sb.AppendLine("* **ONLY proceed** if compilation check returns exit code 0");
-            sb.AppendLine("* **VERIFY scene creation** by checking `.vibe-commands/logs/latest.log` for success/error messages");
+            sb.AppendLine("* **VERIFY scene creation** by checking `.vibe-unity/commands/logs/latest.log` for success/error messages");
             sb.AppendLine("* **REPORT failures immediately** with specific error details from logs");
             sb.AppendLine("* **DO NOT** create .meta files unless explicitly requested");
             sb.AppendLine("* **ASK USER** for guidance only when encountering system-level failures or unsupported features");
             sb.AppendLine();
             sb.AppendLine("## For Detailed Usage");
             sb.AppendLine("- **Full Documentation**: [Package README](./Packages/com.ricoder.vibe-unity/README.md)");
-            sb.AppendLine("- **JSON Schema Examples**: [Package Test Files](./Packages/com.ricoder.vibe-unity/.vibe-commands/)");
-            sb.AppendLine("- **Coverage Analysis**: Check latest report in `.vibe-commands/coverage-analysis/`");
+            sb.AppendLine("- **JSON Schema Examples**: [Package Test Files](./Packages/com.ricoder.vibe-unity/.vibe-unity/commands/)");
+            sb.AppendLine("- **Coverage Analysis**: Check latest report in `.vibe-unity/commands/coverage-analysis/`");
             sb.AppendLine();
             sb.AppendLine("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^VIBE-UNITY^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^");
             
@@ -269,9 +296,8 @@ namespace VibeUnity.Editor
         }
         
         /// <summary>
-        /// Manual menu item to force documentation update
+        /// Force documentation update (called from menu in VibeUnityMenu.cs)
         /// </summary>
-        [MenuItem("Tools/Vibe Unity/Update CLAUDE.md Documentation", priority = 300)]
         public static void ForceUpdateDocumentation()
         {
             if (UpdateClaudeMdDocumentation())

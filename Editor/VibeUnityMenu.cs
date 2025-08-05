@@ -174,7 +174,7 @@ namespace VibeUnity.Editor
         private static void ShowCoverageReport()
         {
             string projectRoot = System.IO.Path.GetDirectoryName(Application.dataPath);
-            string coverageDir = System.IO.Path.Combine(projectRoot, ".vibe-commands", "coverage-analysis");
+            string coverageDir = System.IO.Path.Combine(projectRoot, ".vibe-unity", "commands", "coverage-analysis");
             
             if (System.IO.Directory.Exists(coverageDir))
             {
@@ -213,7 +213,7 @@ namespace VibeUnity.Editor
         private static void OpenCoverageDirectory()
         {
             string projectRoot = System.IO.Path.GetDirectoryName(Application.dataPath);
-            string coverageDir = System.IO.Path.Combine(projectRoot, ".vibe-commands", "coverage-analysis");
+            string coverageDir = System.IO.Path.Combine(projectRoot, ".vibe-unity", "commands", "coverage-analysis");
             
             if (System.IO.Directory.Exists(coverageDir))
             {
@@ -231,12 +231,12 @@ namespace VibeUnity.Editor
         private static void CleanUpLogFiles()
         {
             string projectRoot = System.IO.Path.GetDirectoryName(Application.dataPath);
-            string vibeCommandsDir = System.IO.Path.Combine(projectRoot, ".vibe-commands");
+            string vibeCommandsDir = System.IO.Path.Combine(projectRoot, ".vibe-unity", "commands");
             
             if (!System.IO.Directory.Exists(vibeCommandsDir))
             {
                 EditorUtility.DisplayDialog("Nothing to Clean", 
-                    ".vibe-commands directory not found. No files to clean up.", 
+                    ".vibe-unity/commands directory not found. No files to clean up.", 
                     "OK");
                 return;
             }
@@ -285,7 +285,7 @@ namespace VibeUnity.Editor
                 
                 EditorUtility.DisplayDialog("Cleanup Complete", message.ToString(), "OK");
                 
-                Debug.Log($"[VibeUnity] ✅ Cleaned up {totalFilesDeleted} log files from .vibe-commands directories");
+                Debug.Log($"[VibeUnity] ✅ Cleaned up {totalFilesDeleted} log files from .vibe-unity/commands directories");
             }
             catch (System.Exception e)
             {
@@ -300,6 +300,17 @@ namespace VibeUnity.Editor
         
         #region Configuration Menu
         
+        [MenuItem("Tools/Vibe Unity/Update CLAUDE.md Documentation", priority = 195)]
+        private static void UpdateClaudeDocumentation()
+        {
+            // Force update the stored version first
+            string currentVersion = VibeUnityDocumentationUpdater.GetPackageVersion();
+            EditorPrefs.SetString("VibeUnity_LastDocumentedVersion", currentVersion);
+            
+            // Call the documentation updater
+            VibeUnityDocumentationUpdater.ForceUpdateDocumentation();
+        }
+        
         [MenuItem("Tools/Vibe Unity/Configuration", priority = 200)]
         private static void OpenConfiguration()
         {
@@ -308,7 +319,7 @@ namespace VibeUnity.Editor
                            $"HTTP Server: DISABLED\n" +
                            $"CLI Commands: DISABLED\n\n" +
                            $"File Watcher: {(isFileWatcherEnabled ? "Enabled" : "Disabled")}\n" +
-                           $"Watch Directory: .vibe-commands\n\n" +
+                           $"Watch Directory: .vibe-unity/commands\n\n" +
                            $"Scene State System: ENABLED\n" +
                            $"- Export/Import scene state JSON files\n" +
                            $"- Comprehensive coverage analysis\n" +

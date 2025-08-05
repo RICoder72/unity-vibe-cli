@@ -5,6 +5,41 @@ All notable changes to the Vibe Unity package will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.2] - 2025-08-05
+
+### Added
+- Automatic creation of logs/latest.log for easy access to processing results
+- Smart timeout handling in claude-compile-check.sh to prevent infinite loops
+- Improved error detection in test scripts with better log parsing
+
+### Fixed
+- Directory structure moved from .vibe-commands to .vibe-unity/commands for better organization
+- GetPackageVersion accessibility issue in menu system
+- Scene creation JSON format corrected in documentation and examples
+- Compile check script now properly detects when Unity is already compiled
+- Log directories are now created automatically during command processing
+
+### Changed
+- Updated all references from .vibe-commands to .vibe-unity/commands throughout codebase
+- Enhanced test procedures with better error reporting and verification
+- Improved documentation with correct JSON format examples
+
+## [1.5.1] - 2025-08-05
+
+### Added
+- Automatic CLAUDE.md documentation updates when package version changes
+- Version tracking for claude-compile-check.sh script with smart update detection
+- Menu item to manually update CLAUDE.md documentation (Tools > Vibe Unity > Update CLAUDE.md Documentation)
+
+### Fixed
+- Line ending preservation in SetupClaudeCompileCheckScript to ensure Unix LF endings on all platforms
+- Script version comparison to only update when content actually changes
+- Documentation now only regenerates when package version changes, reducing unnecessary writes
+
+### Changed
+- Improved compile check script installation with better version tracking and logging
+- Documentation updater now tracks last documented version to avoid redundant updates
+
 ## [1.5.0] - 2025-01-05
 
 ### Added

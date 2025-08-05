@@ -15,7 +15,7 @@
 
 UNITY_LOG_PATH="/mnt/c/Users/matth/AppData/Local/Unity/Editor/Editor.log"
 INCLUDE_WARNINGS=false
-SCRIPT_VERSION="1.4.2"
+SCRIPT_VERSION="1.5.0"
 PROJECT_NAME=""
 RETRY_COUNT=0
 MAX_RETRIES=2
@@ -126,6 +126,33 @@ focus_wsl() {
     }" 2>/dev/null
 }
 
+# Function to check Unity compilation status via status file
+check_unity_compilation_status() {
+    local status_file=".vibe-unity/status/compilation.json"
+    
+    # Check if status file exists
+    if [[ ! -f "$status_file" ]]; then
+        echo "NOT_FOUND"
+        return
+    fi
+    
+    # Try to read the file (will fail if locked)
+    local file_content=""
+    if file_content=$(cat "$status_file" 2>/dev/null); then
+        # File is unlocked, parse status
+        if echo "$file_content" | grep -q '"status":"compiling"'; then
+            echo "COMPILING"
+        elif echo "$file_content" | grep -q '"status":"complete"'; then
+            echo "COMPLETE"
+        else
+            echo "UNKNOWN"
+        fi
+    else
+        # File is locked (compilation in progress)
+        echo "LOCKED"
+    fi
+}
+
 # Function to parse compilation errors and warnings from Unity log
 parse_compilation_results() {
     local log_content="$1"
@@ -220,6 +247,18 @@ monitor_compilation() {
     while [[ $elapsed -lt $timeout ]]; do
         local current_size=$(stat -c%s "$UNITY_LOG_PATH")
         
+        # Check Unity compilation status via status file
+        local unity_status=$(check_unity_compilation_status)
+        
+        # If Unity is compiling (locked file or compiling status), track compilation activity
+        if [[ "$unity_status" == "LOCKED" ]] || [[ "$unity_status" == "COMPILING" ]]; then
+            compilation_started=true
+            echo "Unity compilation detected via status file - compilation in progress..." >&2
+        elif [[ "$unity_status" == "COMPLETE" ]]; then
+            echo "Unity compilation completed via status file" >&2
+            # Let normal log processing handle the completion
+        fi
+        
         if [[ $current_size -gt $initial_size ]]; then
             # Get new log entries since monitoring started
             local new_entries=$(tail -c +$((initial_size + 1)) "$UNITY_LOG_PATH")
@@ -273,12 +312,29 @@ monitor_compilation() {
         
         sleep 1
         ((elapsed++))
+        
+        # If Unity is still compiling but we're approaching timeout, give more time
+        if [[ ("$unity_status" == "LOCKED" || "$unity_status" == "COMPILING") ]] && [[ $elapsed -gt $((timeout - 10)) ]]; then
+            echo "Unity still compiling near timeout, extending wait..." >&2
+            timeout=$((timeout + 15))  # Give 15 more seconds
+        fi
     done
     
-    # Timeout reached - check logs and potentially retry
+    # Timeout reached - check Unity one more time and logs
+    local final_unity_status=$(check_unity_compilation_status)
     local final_entries=""
     if [[ $current_size -gt $initial_size ]]; then
         final_entries=$(tail -c +$((initial_size + 1)) "$UNITY_LOG_PATH")
+    fi
+    
+    # If Unity is still compiling, this might be a longer compilation
+    if [[ "$final_unity_status" == "LOCKED" ]] || [[ "$final_unity_status" == "COMPILING" ]]; then
+        echo "Unity still compiling at timeout (status: $final_unity_status)" >&2
+        if [[ $RETRY_COUNT -lt $MAX_RETRIES ]]; then
+            ((RETRY_COUNT++))
+            echo "Unity still compiling. Retrying (attempt $((RETRY_COUNT + 1))/$((MAX_RETRIES + 1)))..." >&2
+            return 3  # Signal retry needed
+        fi
     fi
     
     # If we have compilation logs, analyze them

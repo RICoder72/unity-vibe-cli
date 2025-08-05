@@ -46,6 +46,30 @@ namespace VibeUnity.Editor
                 string scriptsPath = Path.Combine(packagePath, "Scripts");
                 string projectRoot = Directory.GetParent(Application.dataPath).FullName;
                 
+                // Copy claude-compile-check.sh script with LF line endings preserved
+                string sourceCompileCheck = Path.Combine(scriptsPath, "claude-compile-check.sh");
+                string targetCompileCheck = Path.Combine(projectRoot, "claude-compile-check.sh");
+                
+                if (File.Exists(sourceCompileCheck))
+                {
+                    // Read with preserved line endings and write to preserve LF
+                    string content = File.ReadAllText(sourceCompileCheck);
+                    // Ensure Unix line endings (LF only)
+                    content = content.Replace("\r\n", "\n").Replace("\r", "\n");
+                    File.WriteAllText(targetCompileCheck, content);
+                    
+                    // Make executable on Unix systems
+                    if (System.Environment.OSVersion.Platform == System.PlatformID.Unix)
+                    {
+                        System.Diagnostics.Process.Start("chmod", $"+x \"{targetCompileCheck}\"");
+                    }
+                    
+                    Debug.Log($"[Vibe Unity] Copied compilation check script to: {targetCompileCheck}");
+                    
+                    // Add to .gitignore to prevent line ending issues
+                    AddToGitIgnore(projectRoot, "claude-compile-check.sh");
+                }
+                
                 // Copy vibe-unity script
                 string sourceScript = Path.Combine(scriptsPath, "vibe-unity");
                 string targetScript = Path.Combine(projectRoot, "vibe-unity");
@@ -70,6 +94,41 @@ namespace VibeUnity.Editor
             catch (System.Exception e)
             {
                 Debug.LogWarning($"[Vibe Unity] Could not copy bash scripts: {e.Message}");
+            }
+        }
+        
+        private static void AddToGitIgnore(string projectRoot, string fileName)
+        {
+            try
+            {
+                string gitIgnorePath = Path.Combine(projectRoot, ".gitignore");
+                string entryToAdd = fileName;
+                
+                // Check if .gitignore exists
+                if (File.Exists(gitIgnorePath))
+                {
+                    string existingContent = File.ReadAllText(gitIgnorePath);
+                    
+                    // Check if the entry already exists
+                    if (!existingContent.Contains(entryToAdd))
+                    {
+                        // Add the entry with a comment
+                        string newEntry = $"\n# Vibe Unity - auto-generated script with Unix line endings\n{entryToAdd}\n";
+                        File.AppendAllText(gitIgnorePath, newEntry);
+                        Debug.Log($"[Vibe Unity] Added {fileName} to .gitignore to preserve line endings");
+                    }
+                }
+                else
+                {
+                    // Create .gitignore with the entry
+                    string content = $"# Vibe Unity - auto-generated script with Unix line endings\n{entryToAdd}\n";
+                    File.WriteAllText(gitIgnorePath, content);
+                    Debug.Log($"[Vibe Unity] Created .gitignore and added {fileName}");
+                }
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning($"[Vibe Unity] Could not update .gitignore: {e.Message}");
             }
         }
         

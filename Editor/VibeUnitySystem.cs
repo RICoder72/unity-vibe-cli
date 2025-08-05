@@ -49,6 +49,9 @@ namespace VibeUnity.Editor
             // Set up the main thread dispatcher for thread-safe operations
             EditorApplication.update += ProcessMainThreadQueue;
             
+            // Initialize compilation tracker
+            InitializeCompilationTracker();
+            
             // Set up scene state auto-generation hooks
             InitializeSceneStateHooks();
             
@@ -202,6 +205,10 @@ namespace VibeUnity.Editor
             
             // Remove the main thread dispatcher
             EditorApplication.update -= ProcessMainThreadQueue;
+            
+            // Cleanup compilation tracker
+            EditorApplication.update -= MonitorCompilationState;
+            CleanupCompilationTracker();
         }
         
         #endregion
@@ -400,6 +407,134 @@ namespace VibeUnity.Editor
             catch (System.Exception e)
             {
                 Debug.LogWarning($"[VibeUnity] Error during cleanup: {e.Message}");
+            }
+        }
+        
+        #endregion
+        
+        #region Compilation Tracking with File Locking
+        
+        private static readonly string COMPILATION_STATUS_DIR = Path.Combine(Application.dataPath, "..", ".vibe-unity", "status");
+        private static readonly string COMPILATION_STATUS_FILE = Path.Combine(COMPILATION_STATUS_DIR, "compilation.json");
+        private static bool compilationTrackerInitialized = false;
+        private static bool lastCompilationState = false;
+        private static FileStream compilationLockStream = null;
+        
+        /// <summary>
+        /// Initialize compilation tracking with file locking
+        /// </summary>
+        private static void InitializeCompilationTracker()
+        {
+            if (compilationTrackerInitialized)
+                return;
+                
+            // Ensure status directory exists
+            if (!Directory.Exists(COMPILATION_STATUS_DIR))
+            {
+                Directory.CreateDirectory(COMPILATION_STATUS_DIR);
+                Debug.Log($"[VibeUnity] Created compilation status directory: {COMPILATION_STATUS_DIR}");
+            }
+            
+            // Hook into Unity's update to monitor EditorApplication.isCompiling
+            EditorApplication.update += MonitorCompilationState;
+            
+            // Initialize state
+            lastCompilationState = EditorApplication.isCompiling;
+            UpdateCompilationStatusFile();
+            
+            compilationTrackerInitialized = true;
+            Debug.Log("[VibeUnity] Compilation tracker initialized");
+        }
+        
+        /// <summary>
+        /// Monitor EditorApplication.isCompiling and update status file accordingly
+        /// </summary>
+        private static void MonitorCompilationState()
+        {
+            bool currentCompilationState = EditorApplication.isCompiling;
+            
+            // Only update when state changes
+            if (currentCompilationState != lastCompilationState)
+            {
+                lastCompilationState = currentCompilationState;
+                UpdateCompilationStatusFile();
+            }
+        }
+        
+        /// <summary>
+        /// Update the compilation status file with locking
+        /// </summary>
+        private static void UpdateCompilationStatusFile()
+        {
+            try
+            {
+                string timestamp = System.DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ");
+                
+                if (EditorApplication.isCompiling)
+                {
+                    // Compilation started - lock the file and write status
+                    if (compilationLockStream == null)
+                    {
+                        string statusData = $"{{\"status\":\"compiling\",\"started\":\"{timestamp}\",\"ended\":null}}";
+                        
+                        // Open file with exclusive lock
+                        compilationLockStream = new FileStream(COMPILATION_STATUS_FILE, 
+                            FileMode.Create, FileAccess.Write, FileShare.None);
+                        
+                        byte[] data = System.Text.Encoding.UTF8.GetBytes(statusData);
+                        compilationLockStream.Write(data, 0, data.Length);
+                        compilationLockStream.Flush();
+                        
+                        Debug.Log("[VibeUnity] Compilation started - file locked");
+                    }
+                }
+                else
+                {
+                    // Compilation ended - write final status and unlock file
+                    if (compilationLockStream != null)
+                    {
+                        try
+                        {
+                            compilationLockStream.Close();
+                            compilationLockStream.Dispose();
+                            compilationLockStream = null;
+                        }
+                        catch (System.Exception e)
+                        {
+                            Debug.LogWarning($"[VibeUnity] Error closing lock stream: {e.Message}");
+                        }
+                    }
+                    
+                    // Write completion status to unlocked file
+                    string statusData = $"{{\"status\":\"complete\",\"started\":null,\"ended\":\"{timestamp}\"}}";
+                    File.WriteAllText(COMPILATION_STATUS_FILE, statusData);
+                    
+                    Debug.Log("[VibeUnity] Compilation completed - file unlocked");
+                }
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning($"[VibeUnity] Error updating compilation status: {e.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// Cleanup compilation tracker resources
+        /// </summary>
+        private static void CleanupCompilationTracker()
+        {
+            if (compilationLockStream != null)
+            {
+                try
+                {
+                    compilationLockStream.Close();
+                    compilationLockStream.Dispose();
+                    compilationLockStream = null;
+                }
+                catch (System.Exception e)
+                {
+                    Debug.LogWarning($"[VibeUnity] Error cleaning up compilation tracker: {e.Message}");
+                }
             }
         }
         

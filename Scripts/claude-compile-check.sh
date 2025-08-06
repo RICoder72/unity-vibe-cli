@@ -182,28 +182,34 @@ parse_compilation_results() {
         fi
     done <<< "$log_content"
     
-    # Parse warnings if requested
-    if [[ "$INCLUDE_WARNINGS" == "true" ]]; then
-        while IFS= read -r line; do
-            if [[ "$line" =~ ^(.+)\(([0-9]+),([0-9]+)\):\ warning\ (.+):\ (.+)$ ]]; then
-                # C# compilation warning format: File(line,col): warning CS####: Message
+    # Always parse warnings to get accurate count
+    while IFS= read -r line; do
+        # Pattern 1: Standard C# warning format with file location (Windows or Unix paths)
+        # Example: Assets\Scripts\Test.cs(10,5): warning CS0168: The variable 'test' is declared but never used
+        if [[ "$line" =~ ^(.+)\(([0-9]+),([0-9]+)\):\ warning\ (CS[0-9]+):\ (.+)$ ]]; then
+            ((warning_count++))
+            if [[ "$INCLUDE_WARNINGS" == "true" ]]; then
                 local file="${BASH_REMATCH[1]}"
                 local line_num="${BASH_REMATCH[2]}"
+                local col_num="${BASH_REMATCH[3]}"
+                local warning_code="${BASH_REMATCH[4]}"
                 local warning_msg="${BASH_REMATCH[5]}"
                 
-                # Clean up file path
-                file=$(echo "$file" | sed 's|.*[/\\]Packages[/\\]|./Packages/|' | sed 's|.*[/\\]Assets[/\\]|./Assets/|')
+                # Clean up file path (handle both Windows backslashes and Unix forward slashes)
+                file=$(echo "$file" | sed 's|\\|/|g' | sed 's|.*[/]Packages[/]|./Packages/|' | sed 's|.*[/]Assets[/]|./Assets/|')
                 
-                warnings="${warnings}  [$file:$line_num] WARNING: $warning_msg\n"
-                ((warning_count++))
-            elif [[ "$line" =~ warning\ CS[0-9]+: ]]; then
-                # Generic warning pattern
-                local warning_msg=$(echo "$line" | sed 's/.*warning CS[0-9]*: //')
-                warnings="${warnings}  [Unknown] WARNING: $warning_msg\n"
-                ((warning_count++))
+                warnings="${warnings}  [$file:$line_num] WARNING $warning_code: $warning_msg\n"
             fi
-        done <<< "$log_content"
-    fi
+        # Pattern 2: Generic warning pattern
+        elif [[ "$line" =~ warning\ (CS[0-9]+):\ (.+)$ ]]; then
+            ((warning_count++))
+            if [[ "$INCLUDE_WARNINGS" == "true" ]]; then
+                local warning_code="${BASH_REMATCH[1]}"
+                local warning_msg="${BASH_REMATCH[2]}"
+                warnings="${warnings}  [Unknown] WARNING $warning_code: $warning_msg\n"
+            fi
+        fi
+    done <<< "$log_content"
     
     # Combine results
     local details=""

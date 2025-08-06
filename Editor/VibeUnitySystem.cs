@@ -472,14 +472,16 @@ namespace VibeUnity.Editor
         {
             try
             {
-                string timestamp = System.DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ");
+                // Get high-precision timestamp with milliseconds
+                long timestampMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                string timestamp = System.DateTime.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'");
                 
                 if (EditorApplication.isCompiling)
                 {
                     // Compilation started - lock the file and write status
                     if (compilationLockStream == null)
                     {
-                        string statusData = $"{{\"status\":\"compiling\",\"started\":\"{timestamp}\",\"ended\":null}}";
+                        string statusData = $"{{\"status\":\"compiling\",\"started\":\"{timestamp}\",\"startedMs\":{timestampMs},\"ended\":null,\"endedMs\":null}}";
                         
                         // Open file with exclusive lock
                         compilationLockStream = new FileStream(COMPILATION_STATUS_FILE, 
@@ -489,14 +491,41 @@ namespace VibeUnity.Editor
                         compilationLockStream.Write(data, 0, data.Length);
                         compilationLockStream.Flush();
                         
-                        Debug.Log("[VibeUnity] Compilation started - file locked");
+                        Debug.Log($"[VibeUnity] Compilation started at {timestamp} ({timestampMs}ms) - file locked");
                     }
                 }
                 else
                 {
-                    // Compilation ended - write final status and unlock file
+                    // Compilation ended - need to read the start time first
+                    string startedTimestamp = null;
+                    long startedMs = 0;
+                    
+                    // Try to read start time from locked stream if available
                     if (compilationLockStream != null)
                     {
+                        try
+                        {
+                            // Read existing data before closing
+                            compilationLockStream.Position = 0;
+                            byte[] buffer = new byte[compilationLockStream.Length];
+                            compilationLockStream.Read(buffer, 0, buffer.Length);
+                            string existingData = System.Text.Encoding.UTF8.GetString(buffer);
+                            
+                            // Parse start time from existing data
+                            var startMatch = System.Text.RegularExpressions.Regex.Match(existingData, @"""started"":""([^""]+)""");
+                            var startMsMatch = System.Text.RegularExpressions.Regex.Match(existingData, @"""startedMs"":(\d+)");
+                            
+                            if (startMatch.Success)
+                                startedTimestamp = startMatch.Groups[1].Value;
+                            if (startMsMatch.Success)
+                                long.TryParse(startMsMatch.Groups[1].Value, out startedMs);
+                        }
+                        catch
+                        {
+                            // If we can't read the start time, we'll just use null
+                        }
+                        
+                        // Now close the stream
                         try
                         {
                             compilationLockStream.Close();
@@ -509,11 +538,19 @@ namespace VibeUnity.Editor
                         }
                     }
                     
-                    // Write completion status to unlocked file
-                    string statusData = $"{{\"status\":\"complete\",\"started\":null,\"ended\":\"{timestamp}\"}}";
+                    // Write completion status to unlocked file with both start and end times
+                    string statusData = $"{{\"status\":\"complete\",\"started\":{(startedTimestamp != null ? $"\"{startedTimestamp}\"" : "null")},\"startedMs\":{(startedMs > 0 ? startedMs.ToString() : "null")},\"ended\":\"{timestamp}\",\"endedMs\":{timestampMs}}}";
                     File.WriteAllText(COMPILATION_STATUS_FILE, statusData);
                     
-                    Debug.Log("[VibeUnity] Compilation completed - file unlocked");
+                    if (startedMs > 0)
+                    {
+                        long durationMs = timestampMs - startedMs;
+                        Debug.Log($"[VibeUnity] Compilation completed at {timestamp} ({timestampMs}ms) - Duration: {durationMs}ms - file unlocked");
+                    }
+                    else
+                    {
+                        Debug.Log($"[VibeUnity] Compilation completed at {timestamp} ({timestampMs}ms) - file unlocked");
+                    }
                 }
             }
             catch (System.Exception e)

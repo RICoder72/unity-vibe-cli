@@ -52,6 +52,7 @@ namespace VibeUnity.Editor
                 
                 if (File.Exists(sourceCompileCheck))
                 {
+                    // Always overwrite the compile check script to ensure latest version
                     // Read with preserved line endings and write to preserve LF
                     string content = File.ReadAllText(sourceCompileCheck);
                     // Ensure Unix line endings (LF only)
@@ -64,7 +65,7 @@ namespace VibeUnity.Editor
                         System.Diagnostics.Process.Start("chmod", $"+x \"{targetCompileCheck}\"");
                     }
                     
-                    Debug.Log($"[Vibe Unity] Copied compilation check script to: {targetCompileCheck}");
+                    Debug.Log($"[Vibe Unity] Updated compilation check script to latest version: {targetCompileCheck}");
                     
                     // Add to .gitignore to prevent line ending issues
                     AddToGitIgnore(projectRoot, "claude-compile-check.sh");

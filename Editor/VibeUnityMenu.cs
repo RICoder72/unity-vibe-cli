@@ -298,6 +298,172 @@ namespace VibeUnity.Editor
         
         #endregion
         
+        #region Development Tools Menu
+        
+        [MenuItem("Tools/Vibe Unity/Development/Force Asset Refresh", priority = 180)]
+        private static void ForceAssetRefresh()
+        {
+            Debug.Log("[Vibe Unity] Forcing asset database refresh...");
+            AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport | ImportAssetOptions.ForceUpdate);
+            Debug.Log("[Vibe Unity] ✅ Asset database refresh completed");
+            
+            // Show a brief dialog to confirm the action
+            EditorUtility.DisplayDialog("Asset Refresh", 
+                "Asset database has been refreshed and Unity will recompile if needed.", 
+                "OK");
+        }
+        
+        [MenuItem("Tools/Vibe Unity/Development/Force Recompile", priority = 181)]
+        private static void ForceRecompile()
+        {
+            Debug.Log("[Vibe Unity] Forcing script recompilation via CompilationController...");
+            
+            // Use the new CompilationController for better monitoring
+            VibeUnityCompilationController.TriggerCompilation();
+            
+            string message = $"Compilation triggered for project {VibeUnityCompilationController.GetProjectHash()}.\n\n";
+            
+            if (VibeUnityCompilationController.IsCompiling())
+            {
+                message += "Unity is currently compiling - check console for progress.";
+            }
+            else
+            {
+                message += "Compilation requested - Unity will recompile if needed.";
+            }
+            
+            EditorUtility.DisplayDialog("Force Recompile", message, "OK");
+        }
+        
+        [MenuItem("Tools/Vibe Unity/Development/Run Test File", priority = 182)]
+        private static void RunTestFile()
+        {
+            string projectRoot = System.IO.Path.GetDirectoryName(Application.dataPath);
+            string testFilePath = System.IO.Path.Combine(projectRoot, ".vibe-unity", "commands", "test-scene-creation.json");
+            
+            if (System.IO.File.Exists(testFilePath))
+            {
+                Debug.Log("[Vibe Unity] Running test file: test-scene-creation.json");
+                
+                // Process the test file directly
+                if (IsFileWatcherEnabled)
+                {
+                    // File watcher will pick it up, just touch the file to trigger processing
+                    System.IO.File.SetLastWriteTime(testFilePath, System.DateTime.Now);
+                    Debug.Log("[Vibe Unity] ✅ Test file touched - file watcher will process it");
+                }
+                else
+                {
+                    // Process directly since file watcher is disabled
+                    try
+                    {
+                        bool success = VibeUnityJSONProcessor.ProcessBatchFileWithLogging(testFilePath);
+                        if (success)
+                        {
+                            Debug.Log("[Vibe Unity] ✅ Test file processed directly");
+                        }
+                        else
+                        {
+                            Debug.LogWarning("[Vibe Unity] ⚠ Test file processing completed with issues");
+                        }
+                    }
+                    catch (System.Exception e)
+                    {
+                        Debug.LogError($"[Vibe Unity] Failed to process test file: {e.Message}");
+                    }
+                }
+                
+                EditorUtility.DisplayDialog("Test File", 
+                    "Test file processing initiated.\n\nCheck Unity Console for results.", 
+                    "OK");
+            }
+            else
+            {
+                EditorUtility.DisplayDialog("Test File Not Found", 
+                    $"Test file not found at:\n{testFilePath}\n\nPlease ensure the test file exists.", 
+                    "OK");
+            }
+        }
+        
+        [MenuItem("Tools/Vibe Unity/Development/Compilation Status", priority = 183)]
+        private static void ShowCompilationStatus()
+        {
+            var info = new System.Text.StringBuilder();
+            info.AppendLine("Compilation Status");
+            info.AppendLine("==================");
+            info.AppendLine();
+            info.AppendLine($"Project Hash: {VibeUnityCompilationController.GetProjectHash()}");
+            info.AppendLine($"Currently Compiling: {(VibeUnityCompilationController.IsCompiling() ? "YES" : "NO")}");
+            info.AppendLine();
+            
+            string projectRoot = System.IO.Path.GetDirectoryName(Application.dataPath);
+            string compileCommandsDir = System.IO.Path.Combine(projectRoot, ".vibe-unity", "compile-commands");
+            string compileStatusDir = System.IO.Path.Combine(projectRoot, ".vibe-unity", "compile-status");
+            
+            info.AppendLine($"Commands Directory: {(System.IO.Directory.Exists(compileCommandsDir) ? "Exists" : "Missing")}");
+            if (System.IO.Directory.Exists(compileCommandsDir))
+            {
+                var commandFiles = System.IO.Directory.GetFiles(compileCommandsDir, "*.json");
+                info.AppendLine($"Pending Commands: {commandFiles.Length}");
+            }
+            
+            info.AppendLine($"Status Directory: {(System.IO.Directory.Exists(compileStatusDir) ? "Exists" : "Missing")}");
+            if (System.IO.Directory.Exists(compileStatusDir))
+            {
+                var statusFiles = System.IO.Directory.GetFiles(compileStatusDir, "*.json");
+                info.AppendLine($"Recent Status Files: {statusFiles.Length}");
+                
+                if (statusFiles.Length > 0)
+                {
+                    var latestStatus = statusFiles.OrderByDescending(System.IO.File.GetLastWriteTime).First();
+                    var fileName = System.IO.Path.GetFileName(latestStatus);
+                    var lastModified = System.IO.File.GetLastWriteTime(latestStatus);
+                    info.AppendLine($"Latest: {fileName} ({lastModified:HH:mm:ss})");
+                }
+            }
+            
+            info.AppendLine();
+            info.AppendLine("Use 'Force Recompile' to test compilation system.");
+            
+            EditorUtility.DisplayDialog("Compilation Status", info.ToString(), "OK");
+            Debug.Log($"[Vibe Unity] Compilation Status:\n{info.ToString()}");
+        }
+
+        [MenuItem("Tools/Vibe Unity/Development/Show Debug Info", priority = 184)]
+        private static void ShowDebugInfo()
+        {
+            var info = new System.Text.StringBuilder();
+            info.AppendLine("Vibe Unity Debug Information");
+            info.AppendLine("============================");
+            info.AppendLine();
+            info.AppendLine($"Unity Version: {Application.unityVersion}");
+            info.AppendLine($"Project: {Application.productName}");
+            info.AppendLine($"Platform: {Application.platform}");
+            info.AppendLine();
+            info.AppendLine($"File Watcher: {(isFileWatcherEnabled ? "Enabled" : "Disabled")}");
+            info.AppendLine($"HTTP Server: DISABLED");
+            info.AppendLine();
+            info.AppendLine($"Currently Compiling: {EditorApplication.isCompiling}");
+            info.AppendLine($"Play Mode: {EditorApplication.isPlaying}");
+            info.AppendLine($"Pause Mode: {EditorApplication.isPaused}");
+            info.AppendLine();
+            
+            string projectRoot = System.IO.Path.GetDirectoryName(Application.dataPath);
+            string commandsDir = System.IO.Path.Combine(projectRoot, ".vibe-unity", "commands");
+            info.AppendLine($"Commands Directory: {(System.IO.Directory.Exists(commandsDir) ? "Exists" : "Missing")}");
+            
+            if (System.IO.Directory.Exists(commandsDir))
+            {
+                var jsonFiles = System.IO.Directory.GetFiles(commandsDir, "*.json");
+                info.AppendLine($"JSON Files in Commands Dir: {jsonFiles.Length}");
+            }
+            
+            EditorUtility.DisplayDialog("Debug Information", info.ToString(), "OK");
+            Debug.Log($"[Vibe Unity] Debug Info:\n{info.ToString()}");
+        }
+        
+        #endregion
+        
         #region Configuration Menu
         
         [MenuItem("Tools/Vibe Unity/Update CLAUDE.md Documentation", priority = 195)]

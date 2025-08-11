@@ -5,6 +5,36 @@ All notable changes to the Vibe Unity package will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2025-08-11
+
+### 🚀 Major Refactor - Simplified Compilation System
+
+### Added
+- **Configurable Keyboard Shortcuts**: JSON-based settings with UI (Tools > Vibe Unity > Settings)
+- **Real-time Status Files**: Always-current compilation status in `.vibe-unity/compilation/current-status.json`
+- **Persistent Project Hash**: Auto-generated `.vibe-unity/compilation/project-hash.txt` for external tools
+- **Command Queue System**: Drop JSON commands in `.vibe-unity/compilation/command-queue/`
+- **Settings Window**: User-friendly UI for customizing shortcuts and preferences
+- **Multiple Bash Scripts**: Simple (`claude-compile-check-simple.sh`), advanced, and configurable versions
+- **Improved Unity Window Detection**: Better handling of multiple Unity instances
+
+### Changed
+- **BREAKING**: Simplified Unity compilation controller using only CompilationPipeline events
+- **BREAKING**: New keyboard shortcuts - Ctrl+Shift+K (Status), Ctrl+Shift+U (Recompile), Ctrl+Shift+L (Clear)
+- **BREAKING**: Moved to unified `.vibe-unity/compilation/` directory structure
+- **Updated Documentation**: CLAUDE.md v2.0.0 with new workflow instructions
+- **Enhanced Error Reporting**: Detailed file:line:column information in status files
+
+### Fixed
+- Eliminated redundant monitoring systems and race conditions
+- Fixed shortcut conflicts with Unity defaults and server commands
+- Improved multi-Unity instance handling in bash scripts
+- Better external tool integration with persistent files
+
+### Removed
+- Old complex compilation detection logic with EditorApplication.update polling
+- Conflicting Ctrl+Shift+F shortcut (replaced with Ctrl+Shift+U)
+
 ## [1.5.2] - 2025-08-05
 
 ### Added

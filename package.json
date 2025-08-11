@@ -1,8 +1,8 @@
 {
     "name": "com.ricoder.vibe-unity",
-    "version": "1.5.2",
+    "version": "2.0.0",
     "displayName": "Vibe Unity",
-    "description": "Unity development workflow automation with JSON-driven scene creation, comprehensive scene state management, and gap detection. Features scene export/import, coverage analysis, and claude-code integration.",
+    "description": "Unity development workflow automation with JSON-driven scene creation, real-time compilation detection, and configurable shortcuts. Features scene export/import, coverage analysis, settings UI, and enhanced claude-code integration with persistent status files.",
     "unity": "2022.3",
     "unityRelease": "0f1",
     "keywords": [
@@ -18,7 +18,11 @@
         "json",
         "state-management",
         "coverage-analysis",
-        "claude-code"
+        "claude-code",
+        "compilation",
+        "shortcuts",
+        "settings",
+        "real-time"
     ],
     "author": {
         "name": "RICoder72",

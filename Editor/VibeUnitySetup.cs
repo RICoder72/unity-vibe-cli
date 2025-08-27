@@ -254,7 +254,13 @@ namespace VibeUnity.Editor
             };
         }
         
-        // Reset setup functionality removed - menu consolidated in VibeUnityMenu.cs
+        /// <summary>
+        /// Force re-run setup (called from menu)
+        /// </summary>
+        public static void ForceRunSetup()
+        {
+            RunSetup();
+        }
     }
 }
 #endif

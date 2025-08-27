@@ -43,6 +43,7 @@ namespace VibeUnity.Editor
                 string packagePath = GetPackagePath();
                 if (string.IsNullOrEmpty(packagePath)) return;
                 
+                string runtimePath = Path.Combine(packagePath, "Runtime");
                 string scriptsPath = Path.Combine(packagePath, "Scripts");
                 string projectRoot = Directory.GetParent(Application.dataPath).FullName;
                 
@@ -71,25 +72,55 @@ namespace VibeUnity.Editor
                     AddToGitIgnore(projectRoot, "claude-compile-check.sh");
                 }
                 
-                // Copy vibe-unity script
-                string sourceScript = Path.Combine(scriptsPath, "vibe-unity");
-                string targetScript = Path.Combine(projectRoot, "vibe-unity");
+                // Copy vibe-unity script from Runtime folder
+                string sourceScript = Path.Combine(runtimePath, "vibe-unity");
+                string targetScript = Path.Combine(projectRoot, "Scripts", "vibe-unity");
                 
                 if (File.Exists(sourceScript))
                 {
-                    File.Copy(sourceScript, targetScript, true);
+                    Directory.CreateDirectory(Path.Combine(projectRoot, "Scripts"));
+                    
+                    // Read with preserved line endings and write to preserve LF
+                    string content = File.ReadAllText(sourceScript);
+                    // Ensure Unix line endings (LF only)
+                    content = content.Replace("\r\n", "\n").Replace("\r", "\n");
+                    File.WriteAllText(targetScript, content);
+                    
+                    // Make executable on Unix systems
+                    if (System.Environment.OSVersion.Platform == System.PlatformID.Unix)
+                    {
+                        System.Diagnostics.Process.Start("chmod", $"+x \"{targetScript}\"");
+                    }
+                    
                     Debug.Log($"[Vibe Unity] Copied CLI script to: {targetScript}");
+                    
+                    // Add to .gitignore to prevent line ending issues
+                    AddToGitIgnore(projectRoot, "vibe-unity");
                 }
                 
-                // Copy install script
-                string sourceInstaller = Path.Combine(scriptsPath, "install-vibe-unity");
+                // Copy install script from Runtime folder
+                string sourceInstaller = Path.Combine(runtimePath, "install-vibe-unity");
                 string targetInstaller = Path.Combine(projectRoot, "Scripts", "install-vibe-unity");
                 
                 if (File.Exists(sourceInstaller))
                 {
-                    Directory.CreateDirectory(Path.Combine(projectRoot, "Scripts"));
-                    File.Copy(sourceInstaller, targetInstaller, true);
+                    
+                    // Read with preserved line endings and write to preserve LF
+                    string content = File.ReadAllText(sourceInstaller);
+                    // Ensure Unix line endings (LF only)
+                    content = content.Replace("\r\n", "\n").Replace("\r", "\n");
+                    File.WriteAllText(targetInstaller, content);
+                    
+                    // Make executable on Unix systems
+                    if (System.Environment.OSVersion.Platform == System.PlatformID.Unix)
+                    {
+                        System.Diagnostics.Process.Start("chmod", $"+x \"{targetInstaller}\"");
+                    }
+                    
                     Debug.Log($"[Vibe Unity] Copied installer to: {targetInstaller}");
+                    
+                    // Add to .gitignore to prevent line ending issues
+                    AddToGitIgnore(projectRoot, "Scripts/install-vibe-unity");
                 }
             }
             catch (System.Exception e)
@@ -136,18 +167,65 @@ namespace VibeUnity.Editor
         private static string GetPackagePath()
         {
             // Try to find the package in various locations
+            string projectRoot = Directory.GetParent(Application.dataPath).FullName;
+            
             string[] searchPaths = {
-                Path.Combine(Application.dataPath, "..", "Packages", "com.vibe.unity"),
-                Path.Combine(Application.dataPath, "..", "Library", "PackageCache", "com.vibe.unity@1.0.0"),
-                Path.Combine(Application.dataPath, "VibeUnity") // Local package
+                // Git URL packages are cached in Library/PackageCache with various naming patterns
+                Path.Combine(projectRoot, "Library", "PackageCache", "com.vibe.unity@*"),
+                Path.Combine(projectRoot, "Library", "PackageCache", "com.ricoder.vibe-unity@*"),
+                // Local package in Packages folder
+                Path.Combine(projectRoot, "Packages", "com.vibe.unity"),
+                Path.Combine(projectRoot, "Packages", "com.ricoder.vibe-unity"),
+                // Embedded package
+                Path.Combine(Application.dataPath, "VibeUnity")
             };
             
-            foreach (string path in searchPaths)
+            foreach (string searchPattern in searchPaths)
             {
-                if (Directory.Exists(path))
+                if (searchPattern.Contains("@*"))
                 {
-                    return path;
+                    // Handle wildcard patterns for package cache
+                    string directory = Path.GetDirectoryName(searchPattern);
+                    if (Directory.Exists(directory))
+                    {
+                        string pattern = Path.GetFileName(searchPattern);
+                        string[] matchingDirs = Directory.GetDirectories(directory, pattern.Replace("@*", "@*"));
+                        if (matchingDirs.Length > 0)
+                        {
+                            // Return the first (and typically only) match
+                            return matchingDirs[0];
+                        }
+                    }
                 }
+                else if (Directory.Exists(searchPattern))
+                {
+                    return searchPattern;
+                }
+            }
+            
+            // Fallback: try to use Unity's PackageManager API
+            try
+            {
+                var listRequest = UnityEditor.PackageManager.Client.List();
+                while (!listRequest.IsCompleted)
+                {
+                    System.Threading.Thread.Sleep(10);
+                }
+                
+                if (listRequest.Status == UnityEditor.PackageManager.StatusCode.Success)
+                {
+                    foreach (var package in listRequest.Result)
+                    {
+                        if (package.name.Contains("vibe-unity") || package.name.Contains("com.vibe.unity"))
+                        {
+                            return package.resolvedPath;
+                        }
+                    }
+                }
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning($"[Vibe Unity] Could not use PackageManager API: {e.Message}");
             }
             
             return null;
@@ -176,7 +254,13 @@ namespace VibeUnity.Editor
             };
         }
         
-        // Reset setup functionality removed - menu consolidated in VibeUnityMenu.cs
+        /// <summary>
+        /// Force re-run setup (called from menu)
+        /// </summary>
+        public static void ForceRunSetup()
+        {
+            RunSetup();
+        }
     }
 }
 #endif

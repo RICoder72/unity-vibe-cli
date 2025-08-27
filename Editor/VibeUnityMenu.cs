@@ -461,6 +461,30 @@ namespace VibeUnity.Editor
             EditorUtility.DisplayDialog("Debug Information", info.ToString(), "OK");
             Debug.Log($"[Vibe Unity] Debug Info:\n{info.ToString()}");
         }
+
+        [MenuItem("Tools/Vibe Unity/Development/Reset Setup & Re-run", priority = 185)]
+        private static void ResetAndRerunSetup()
+        {
+            if (EditorUtility.DisplayDialog("Reset Setup", 
+                "This will reset the setup completion flag and re-run the CLI script installation.\n\n" +
+                "This is useful if you've updated the package and need to reinstall the scripts.\n\n" +
+                "Continue?", 
+                "Yes, Reset", "Cancel"))
+            {
+                // Clear the setup completion flag
+                EditorPrefs.DeleteKey("VibeUnity_SetupComplete");
+                
+                Debug.Log("[Vibe Unity] Setup completion flag cleared. Re-running setup...");
+                
+                // Force re-run the setup
+                VibeUnitySetup.ForceRunSetup();
+                
+                EditorUtility.DisplayDialog("Setup Complete", 
+                    "Setup has been reset and re-run!\n\n" +
+                    "Check the console for details about script installation.", 
+                    "OK");
+            }
+        }
         
         #endregion
         
